@@ -102,23 +102,26 @@ This automatically triggers the workflow.
 ## Environment & Tools
 
 - **Node.js**: 22 (configurable in workflow)
-- **pnpm**: 10.33.0 (from package.json)
+- **Bun**: Latest (from official Bun releases)
+- **Lock file**: `bun.lockb`
 - **Runner**: Ubuntu Latest
 
 ## Performance Tips
 
-- Workflows use action caching for faster dependency installation
-- First run takes ~3-5 minutes
-- Subsequent runs with same lock file: ~1-2 minutes
-- Use `--frozen-lockfile` to prevent dependency changes
+- Workflows use Bun's module cache for faster dependency installation
+- Bun is significantly faster than pnpm (~3-4x faster)
+- First run takes ~1-2 minutes
+- Subsequent runs with same lockfile: ~30-60 seconds
+- Use `--frozen` flag to prevent dependency changes
 
 ## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| Lint fails | Run `pnpm lint --fix` locally |
-| Type errors | Run `pnpm typecheck` locally |
-| Build fails | Run `pnpm build` locally |
+| Lint fails | Run `bun lint --fix` locally |
+| Type errors | Run `bun typecheck` locally |
+| Build fails | Run `bun build` locally |
+| Cache not working | Delete `.bun` directory and rerun |
 | Release not created | Check tag format: `v` prefix required |
 | Artifacts not in release | Ensure build step runs successfully |
 | Wrong prerelease status | Tag must contain `alpha`, `beta`, or `rc` |

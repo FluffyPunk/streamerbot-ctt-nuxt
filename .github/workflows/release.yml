@@ -35,28 +35,38 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
-          version: 10.33.0
+          bun-version: latest
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'pnpm'
+
+      - name: Get bun cache directory
+        id: bun-cache
+        run: echo "dir=$(bun pm cache)" >> $GITHUB_OUTPUT
+
+      - name: Cache bun modules
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.bun-cache.outputs.dir }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: ${{ runner.os }}-bun-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen
 
       - name: Run linter
-        run: pnpm lint
+        run: bun run lint
 
       - name: Run type check
-        run: pnpm typecheck
+        run: bun run typecheck
 
       - name: Build
-        run: pnpm build
+        run: bun run build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
