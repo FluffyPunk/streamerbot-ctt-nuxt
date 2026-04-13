@@ -1,64 +1,56 @@
-# Nuxt Starter Template
+# Rewritten implementation of [Chris Titus' Streamerbot Chat](https://github.com/ChrisTitusTech/remote-streamerbot-chat) using Nuxt
 
 [![Nuxt UI](https://img.shields.io/badge/Made%20with-Nuxt%20UI-00DC82?logo=nuxt&labelColor=020420)](https://ui.nuxt.com)
 
-Use this template to get started with [Nuxt UI](https://ui.nuxt.com) quickly.
+## Main diffrerences from the original implementation:
+- Logic written in TypeScript
+- Built-in library instead of JS WebSocket client(which means easier development)
+- UI using Vue + Tailwind(at some point Tailwind sucks, but let's ignore that elephant in the room for now)
+- Settings window for setting up the connection to Streamerbot
+- Dynamic streamer mentioning in chat messages(Twitch only, Youtube has no support for now)
 
-- [Live demo](https://starter-template.nuxt.dev/)
-- [Documentation](https://ui.nuxt.com/docs/getting-started/installation/nuxt)
+## Future support capabilities:
+- i18n support (module is present for Nuxt)
+- Building chat overlay as a separate page
 
-<a href="https://starter-template.nuxt.dev/" target="_blank">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://ui.nuxt.com/assets/templates/nuxt/starter-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://ui.nuxt.com/assets/templates/nuxt/starter-light.png">
-    <img alt="Nuxt Starter Template" src="https://ui.nuxt.com/assets/templates/nuxt/starter-light.png" width="830" height="466">
-  </picture>
-</a>
+## Running the application
 
-> The starter template for Vue is on https://github.com/nuxt-ui-templates/starter-vue.
+The only prerequisite is Node.js 18 or higher. You can use any framework for running the application, but I recommend using [Bun](https://bun.sh/) for better performance and faster startup times.
 
-## Quick Start
-
-```bash [Terminal]
-npm create nuxt@latest -- -t ui
-```
-
-## Deploy your own
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-name=starter&repository-url=https%3A%2F%2Fgithub.com%2Fnuxt-ui-templates%2Fstarter&demo-image=https%3A%2F%2Fui.nuxt.com%2Fassets%2Ftemplates%2Fnuxt%2Fstarter-dark.png&demo-url=https%3A%2F%2Fstarter-template.nuxt.dev%2F&demo-title=Nuxt%20Starter%20Template&demo-description=A%20minimal%20template%20to%20get%20started%20with%20Nuxt%20UI.)
-
-## Setup
-
-Make sure to install the dependencies:
+Download the release from the [releases page](https://github.com/FluffyPunk/streamerbot-ctt-nuxt/releases) and run:
 
 ```bash
-pnpm install
+node server/index.mjs
 ```
 
-## Development Server
+## Building/running from source
 
-Start the development server on `http://localhost:3000`:
+Clone the repository and install dependencies:
 
 ```bash
-pnpm dev
+bun install
 ```
 
-## Production
+Then, run the development server:
+
+```bash
+bun run dev
+```
 
 Build the application for production:
 
 ```bash
-pnpm build
+bun run build
 ```
 
 Locally preview production build:
 
 ```bash
-pnpm preview
+bun run preview
 ```
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
 
-## Renovate integration
-
-Install [Renovate GitHub app](https://github.com/apps/renovate/installations/select_target) on your repository and you are good to go.
+# Credits
+- [Chris Titus](https://github.com/ChrisTitusTech) for the original implementation and fixing my fixes
+- Me for bumping his OG repository with all the major updates and fixes
