@@ -15,6 +15,7 @@
     "@iconify-json/simple-icons": "^1.2.78",
     "@nuxt/ui": "^4.6.1",
     "@nuxtjs/i18n": "^10.2.4",
+    "@streamerbot/client": "^1.12.2",
     "nuxt": "^4.4.2",
     "tailwindcss": "^4.2.2"
   },
