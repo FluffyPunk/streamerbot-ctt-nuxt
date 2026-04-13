@@ -65,6 +65,19 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Debug - Check build output
+        run: |
+          echo "Current directory:"
+          pwd
+          echo "Directory contents:"
+          ls -la
+          echo ".output contents:"
+          if [ -d ".output" ]; then
+            ls -laR .output
+          else
+            echo ".output directory does not exist!"
+          fi
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -88,6 +101,17 @@ jobs:
           name: build
           path: .output
 
+      - name: Debug - Check downloaded artifacts
+        run: |
+          echo "Directory contents after download:"
+          ls -la
+          echo ".output contents:"
+          if [ -d ".output" ]; then
+            ls -laR .output
+          else
+            echo ".output directory does not exist!"
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
@@ -98,6 +122,13 @@ jobs:
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Debug - GitHub Release Status
+        if: always()
+        run: |
+          echo "Previous step condition: startsWith(github.ref, 'refs/tags/') = ${{ startsWith(github.ref, 'refs/tags/') }}"
+          echo "github.ref = ${{ github.ref }}"
+          echo "Release step status: ${{ job.status }}"
 
       - name: Notify Release
         if: startsWith(github.ref, 'refs/tags/')
