@@ -17,63 +17,71 @@
         </h2>
       </div>
 
-      <!-- Content -->
-      <div class="p-6 space-y-4">
+      <UForm
+        :validate="validateForm"
+        :state="formData"
+        class="p-6 space-y-4"
+        @submit="onSave"
+      >
         <!-- Host Setting -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-200 mb-2">
-            Host
-          </label>
-          <input
+        <UFormField
+          label="Host"
+          name="host"
+        >
+          <UInput
             v-model="formData.host"
             type="text"
             placeholder="e.g., 10.0.0.95"
-            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
-          >
-        </div>
+            required
+            class="w-full"
+          />
+        </UFormField>
 
         <!-- Port Setting -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-200 mb-2">
-            Port
-          </label>
-          <input
+        <UFormField
+          label="Port"
+          name="port"
+        >
+          <UInput
             v-model.number="formData.port"
             type="number"
             placeholder="e.g., 8080"
             min="1"
             max="65535"
-            class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
-          >
-        </div>
+            required
+            class="w-full"
+          />
+        </UFormField>
 
         <!-- Info Text -->
         <div class="text-xs text-slate-400 p-3 bg-slate-800 rounded-lg">
           Make sure Streamer.bot's WebSocket Server is accessible at this address.
         </div>
-      </div>
 
-      <!-- Footer -->
-      <div class="border-t border-slate-700 px-6 py-4 flex gap-3 justify-end">
-        <button
-          class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
-          @click="onClose"
-        >
-          Cancel
-        </button>
-        <button
-          class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
-          @click="onSave"
-        >
-          Save Settings
-        </button>
-      </div>
+        <!-- Footer -->
+        <div class="border-t border-slate-700 -mx-6 -mb-6 px-6 py-4 flex gap-3 justify-end">
+          <button
+            type="button"
+            class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
+            @click="onClose"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors disabled:bg-slate-700 disabled:cursor-not-allowed"
+          >
+            Save Settings
+          </button>
+        </div>
+      </UForm>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { computed, watch, reactive } from 'vue'
+import type { FormSubmitEvent, FormError } from '@nuxt/ui'
 
 interface Props {
   modelValue: boolean
@@ -94,7 +102,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
-const formData = ref({
+const formData = reactive({
   host: props.host,
   port: props.port
 })
@@ -108,20 +116,29 @@ watch(
   () => props.modelValue,
   (newVal) => {
     if (newVal) {
-      formData.value.host = props.host
-      formData.value.port = props.port
+      formData.host = props.host
+      formData.port = props.port
     }
   }
 )
 
-function onSave() {
-  if (formData.value.host.trim() && formData.value.port > 0) {
-    emit('save', {
-      host: formData.value.host.trim(),
-      port: formData.value.port
-    })
-    isOpen.value = false
+function validateForm(state: Partial<{ host: string, port: number }>): FormError[] {
+  const errors = []
+  if (!state.host || !state.host.trim()) {
+    errors.push({ name: 'host', message: 'Host is required' })
   }
+  if (!state.port || state.port < 1 || state.port > 65535) {
+    errors.push({ name: 'port', message: 'Port must be between 1 and 65535' })
+  }
+  return errors
+}
+
+function onSave(event: FormSubmitEvent<{ host: string, port: number }>) {
+  emit('save', {
+    host: event.data.host.trim(),
+    port: event.data.port
+  })
+  isOpen.value = false
 }
 
 function onClose() {
