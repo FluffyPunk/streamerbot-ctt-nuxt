@@ -53,6 +53,15 @@
           />
         </UFormField>
 
+        <!-- Messages Position Setting -->
+        <UFormField
+          label="Messages on Top"
+          name="messagesOnTop"
+          orientation="horizontal"
+        >
+          <USwitch v-model="formData.messagesOnTop" />
+        </UFormField>
+
         <!-- Info Text -->
         <div class="text-xs text-slate-400 p-3 bg-slate-800 rounded-lg">
           Make sure Streamer.bot's WebSocket Server is accessible at this address.
@@ -87,24 +96,27 @@ interface Props {
   modelValue: boolean
   host: string
   port: number
+  messagesOnTop: boolean
 }
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
-  (e: 'save', data: { host: string, port: number }): void
+  (e: 'save', data: { host: string, port: number, messagesOnTop: boolean }): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
   host: '10.0.0.95',
-  port: 8080
+  port: 8080,
+  messagesOnTop: false
 })
 
 const emit = defineEmits<Emits>()
 
 const formData = reactive({
   host: props.host,
-  port: props.port
+  port: props.port,
+  messagesOnTop: props.messagesOnTop
 })
 
 const isOpen = computed({
@@ -118,11 +130,12 @@ watch(
     if (newVal) {
       formData.host = props.host
       formData.port = props.port
+      formData.messagesOnTop = props.messagesOnTop
     }
   }
 )
 
-function validateForm(state: Partial<{ host: string, port: number }>): FormError[] {
+function validateForm(state: Partial<{ host: string, port: number, messagesOnTop: boolean }>): FormError[] {
   const errors = []
   if (!state.host || !state.host.trim()) {
     errors.push({ name: 'host', message: 'Host is required' })
@@ -133,10 +146,11 @@ function validateForm(state: Partial<{ host: string, port: number }>): FormError
   return errors
 }
 
-function onSave(event: FormSubmitEvent<{ host: string, port: number }>) {
+function onSave(event: FormSubmitEvent<{ host: string, port: number, messagesOnTop: boolean }>) {
   emit('save', {
     host: event.data.host.trim(),
-    port: event.data.port
+    port: event.data.port,
+    messagesOnTop: event.data.messagesOnTop
   })
   isOpen.value = false
 }

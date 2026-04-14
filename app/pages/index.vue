@@ -17,6 +17,7 @@
       v-model="showSettingsModal"
       :host="streamerbotHost"
       :port="streamerbotPort"
+      :messages-on-top="messagesOnTop"
       @save="handleSettingsSave"
     />
 
@@ -82,167 +83,42 @@
       <!-- Twitch Column -->
       <div class="flex-1 flex flex-col border-r border-slate-800">
         <div class="px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0 flex items-center gap-2 font-bold text-sm">
-          <svg
-            class="w-3.5 h-3.5 text-purple-500"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
-          </svg>
+          <UIcon
+            :name="TwitchIcon"
+            class="w-3.5 h-3.5"
+          />
           <span>Twitch</span>
         </div>
         <div
           ref="twitchChatRef"
-          class="flex-1 overflow-y-auto flex flex-col-reverse gap-2 p-3"
+          :class="['flex-1 overflow-y-auto flex gap-2 p-3', messagesOnTop ? 'flex-col' : 'flex-col-reverse']"
         >
-          <div
+          <TwitchMessage
             v-for="message in twitchMessages"
             :key="message.messageId"
-            :class="[
-              'bg-slate-800 rounded-lg p-3 border text-s',
-              message.mention ? 'border-amber-500 border-l-2' : 'border-slate-700'
-            ]"
-          >
-            <div class="flex items-center gap-2 mb-2 flex-wrap">
-              <div class="flex items-center gap-1">
-                <img
-                  v-for="badge in (message.badges || [])"
-                  :key="badge.name"
-                  :src="badge.imageUrl"
-                  :title="badge.name"
-                  class="h-4 object-contain"
-                  @error="(e) => (e.target as HTMLImageElement).src = ''"
-                >
-              </div>
-              <span
-                class="font-semibold"
-                :style="{ color: message.color || '#5aa9ff' }"
-              >
-                {{ message.displayName }}
-              </span>
-              <span class="text-slate-500 ml-auto text-xs">
-                {{ message.time }}
-              </span>
-            </div>
-            <div
-              v-if="message.reply"
-              class="text-xs text-slate-400 border-l border-slate-600 pl-2 mb-2"
-            >
-              Replying to <span class="font-semibold">{{ message.reply.userName }}</span>: "{{ message.reply.msgBody }}"
-            </div>
-            <div class="text-slate-200 wrap-break-word whitespace-pre-wrap">
-              <template
-                v-for="(part, idx) in parseMessageWithEmotes(message.text, message.emotes)"
-                :key="idx"
-              >
-                <span
-                  v-if="part.type === 'text'"
-                  class="inline"
-                >{{ part.content }}</span>
-                <img
-                  v-else-if="part.type === 'emote'"
-                  :src="part.emoteUrl"
-                  :alt="part.emoteName"
-                  :title="part.emoteName"
-                  class="h-5 object-contain inline align-middle"
-                  @error="(e) => (e.target as HTMLImageElement).src = ''"
-                >
-                <a
-                  v-else-if="part.type === 'link'"
-                  :href="part.linkUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-blue-400 hover:text-blue-300 underline break-all inline"
-                >
-                  {{ part.content }}
-                </a>
-              </template>
-            </div>
-          </div>
+            :message="message"
+          />
         </div>
       </div>
 
       <!-- YouTube Column -->
       <div class="flex-1 flex flex-col">
         <div class="px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0 flex items-center gap-2 font-bold text-sm">
-          <svg
-            class="w-3.5 h-3.5 text-red-500"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z" />
-          </svg>
+          <UIcon
+            :name="YoutubeIcon"
+            class="w-3.5 h-3.5"
+          />
           <span>YouTube</span>
         </div>
         <div
           ref="youtubeChatRef"
-          class="flex-1 overflow-y-auto flex flex-col-reverse gap-2 p-3"
+          :class="['flex-1 overflow-y-auto flex gap-2 p-3', messagesOnTop ? 'flex-col' : 'flex-col-reverse']"
         >
-          <div
+          <YouTubeMessage
             v-for="message in youtubeMessages"
             :key="message.messageId"
-            class="bg-slate-800 rounded-lg p-3 border border-slate-700 text-xs"
-          >
-            <div class="flex items-center gap-2 mb-2 flex-wrap">
-              <div
-                v-if="message.badges?.length"
-                class="flex items-center gap-1"
-              >
-                <img
-                  v-for="badge in message.badges.filter((b: Badge) => b.imageUrl)"
-                  :key="badge.name"
-                  :src="badge.imageUrl"
-                  :title="badge.name"
-                  class="h-4 object-contain"
-                  @error="(e) => (e.target as HTMLImageElement).src = ''"
-                >
-                <span
-                  v-for="badge in message.badges.filter((b: Badge) => !b.imageUrl && b.name)"
-                  :key="badge.name"
-                  class="text-sm"
-                >
-                  {{ badge.name }}
-                </span>
-              </div>
-              <span
-                class="font-semibold"
-                :style="{ color: message.color || '#5aa9ff' }"
-              >
-                {{ message.displayName }}
-              </span>
-              <span class="text-slate-500 ml-auto text-xs">
-                {{ message.time }}
-              </span>
-            </div>
-            <div class="text-slate-200 wrap-break-word whitespace-pre-wrap">
-              <template
-                v-for="(part, idx) in parseMessageWithEmotes(message.text, message.emotes)"
-                :key="idx"
-              >
-                <span
-                  v-if="part.type === 'text'"
-                  class="inline"
-                >{{ part.content }}</span>
-                <img
-                  v-else-if="part.type === 'emote'"
-                  :src="part.emoteUrl"
-                  :alt="part.emoteName"
-                  :title="part.emoteName"
-                  class="h-5 object-contain inline align-middle"
-                  @error="(e) => (e.target as HTMLImageElement).src = ''"
-                >
-                <a
-                  v-else-if="part.type === 'link'"
-                  :href="part.linkUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-blue-400 hover:text-blue-300 underline break-all inline"
-                >
-                  {{ part.content }}
-                </a>
-              </template>
-            </div>
-          </div>
+            :message="message"
+          />
         </div>
       </div>
     </div>
@@ -253,7 +129,10 @@
 import { StreamerbotClient, type StreamerbotEventPayload } from '@streamerbot/client'
 import { ref, onMounted, computed, nextTick } from 'vue'
 import SettingsModal from '~/components/SettingsModal.vue'
-import { type Badge, type Emote, type ChatMessage, type EventItem, type MessagePart, URL_REGEX } from '~/types/chat'
+import TwitchMessage from '~/components/TwitchMessage.vue'
+import YouTubeMessage from '~/components/YouTubeMessage.vue'
+import type { Badge, Emote, ChatMessage, EventItem } from '~/types/chat'
+import { TwitchIcon, YoutubeIcon } from '~/assets/icons'
 
 const twitchChatRef = ref<HTMLElement>()
 const youtubeChatRef = ref<HTMLElement>()
@@ -263,6 +142,7 @@ const twitchMessages = ref<ChatMessage[]>([])
 const youtubeMessages = ref<ChatMessage[]>([])
 const eventHistory = ref<EventItem[]>([])
 const isPaused = ref(false)
+const messagesOnTop = ref(false)
 
 const connectionStatus = ref<'connecting' | 'connected' | 'disconnected'>('connecting')
 const tickerDuration = ref(30)
@@ -424,117 +304,6 @@ function purgeOnBan(username: string, isTwitch: boolean) {
 
 function removeMessage(messageId: string) {
   twitchMessages.value = twitchMessages.value.filter(m => m.messageId !== messageId)
-}
-
-function formatUrl(urlString: string): string {
-  // Remove trailing punctuation
-  const url = urlString.replace(/[).,!?:;]+$/, '')
-  // Add protocol if missing
-  if (!url.match(/^https?:\/\//)) {
-    return `https://${url}`
-  }
-  return url
-}
-
-function parseMessageWithEmotes(text: string, emotes: Emote[]): MessagePart[] {
-  if (!emotes) emotes = []
-
-  const parts: MessagePart[] = []
-  const emotesMap = new Map(emotes.map(e => [e.name?.toLowerCase(), e]))
-
-  // Find all segments (emotes, links, and regular text)
-  const segments: Array<{ type: string, content: string, start: number, end: number, url?: string, emoteName?: string, emoteUrl?: string }> = []
-
-  // Find emotes by searching for each actual emote name
-  for (const [emoteLower, emote] of emotesMap) {
-    if (!emote.imageUrl || !emoteLower) continue
-
-    // Create a regex that matches the emote as a whole token
-    // Use word boundary where applicable, or just search for the string
-    const escapedEmote = emoteLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const emoteRegex = new RegExp(`\\b${escapedEmote}\\b|${escapedEmote}`, 'g')
-
-    let match
-    while ((match = emoteRegex.exec(text)) !== null) {
-      segments.push({
-        type: 'emote',
-        content: match[0],
-        start: match.index,
-        end: match.index + match[0].length,
-        emoteName: emote.name,
-        emoteUrl: emote.imageUrl
-      })
-    }
-  }
-
-  // Find links
-  const linkRegex = new RegExp(URL_REGEX.source, 'g')
-  let match
-  while ((match = linkRegex.exec(text)) !== null) {
-    const url = match[0]
-    segments.push({
-      type: 'link',
-      content: url,
-      start: match.index,
-      end: match.index + url.length,
-      url: formatUrl(url)
-    })
-  }
-
-  // Sort segments by start position and remove overlaps
-  segments.sort((a, b) => a.start - b.start)
-
-  const filteredSegments: typeof segments = []
-  for (const segment of segments) {
-    // Skip if this segment overlaps with an already added segment
-    if (filteredSegments.some(s =>
-      (segment.start < s.end && segment.end > s.start)
-    )) {
-      continue
-    }
-    filteredSegments.push(segment)
-  }
-
-  // Build parts, filling gaps with text
-  let lastEnd = 0
-
-  for (const segment of filteredSegments) {
-    // Add text before this segment
-    if (segment.start > lastEnd) {
-      parts.push({
-        type: 'text',
-        content: text.slice(lastEnd, segment.start)
-      })
-    }
-
-    // Add the segment
-    if (segment.type === 'emote') {
-      parts.push({
-        type: 'emote',
-        content: segment.content,
-        emoteUrl: segment.emoteUrl!,
-        emoteName: segment.emoteName
-      })
-    } else if (segment.type === 'link') {
-      parts.push({
-        type: 'link',
-        content: segment.content,
-        linkUrl: segment.url!
-      })
-    }
-
-    lastEnd = segment.end
-  }
-
-  // Add remaining text
-  if (lastEnd < text.length) {
-    parts.push({
-      type: 'text',
-      content: text.slice(lastEnd)
-    })
-  }
-
-  return parts
 }
 
 function initializeClient(host: string, port: number) {
@@ -720,12 +489,14 @@ function initializeClient(host: string, port: number) {
   }
 }
 
-function handleSettingsSave(data: { host: string, port: number }) {
+function handleSettingsSave(data: { host: string, port: number, messagesOnTop: boolean }) {
   streamerbotHost = data.host
   streamerbotPort = data.port
+  messagesOnTop.value = data.messagesOnTop
 
   localStorage.setItem('streamerbot.host', streamerbotHost)
   localStorage.setItem('streamerbot.port', String(streamerbotPort))
+  localStorage.setItem('messages.onTop', String(data.messagesOnTop))
 
   initializeClient(streamerbotHost, streamerbotPort)
 }
@@ -748,6 +519,12 @@ onMounted(() => {
 
   localStorage.setItem('streamerbot.host', streamerbotHost)
   localStorage.setItem('streamerbot.port', String(streamerbotPort))
+
+  // Load message position preference
+  const savedMessagesOnTop = localStorage.getItem('messages.onTop')
+  if (savedMessagesOnTop !== null) {
+    messagesOnTop.value = savedMessagesOnTop === 'true'
+  }
 
   loadEventHistory()
   updateTickerDuration()
