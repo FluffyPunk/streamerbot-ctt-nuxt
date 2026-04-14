@@ -54,3 +54,4 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 # Credits
 - [Chris Titus](https://github.com/ChrisTitusTech) for the original implementation and fixing my fixes
 - Me for bumping his OG repository with all the major updates and fixes
+- [Streamer.bot](https://streamer.bot/) for providing all the original APIs, libraries etc. All the assets taken from their service belong to Streamer.bot 
