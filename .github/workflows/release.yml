@@ -76,7 +76,7 @@ jobs:
           tag_name: ${{ steps.get-version.outputs.version }}
           files: nuxt-chat-${{ steps.get-version.outputs.version }}.tar.gz
           generate_release_notes: true
-          draft: false
+          draft: true
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
