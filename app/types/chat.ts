@@ -11,7 +11,7 @@ export interface Badge {
 }
 
 export interface ChatMessage {
-  id: string
+  messageId: string
   displayName: string
   color: string
   text: string
@@ -27,6 +27,7 @@ export interface EventItem {
   type: string
   name: string
   value?: string
+  message?: string
 }
 
 export interface MessagePart {

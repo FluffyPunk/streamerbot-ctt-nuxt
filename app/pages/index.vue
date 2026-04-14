@@ -33,23 +33,47 @@
         @mouseenter="isPaused = true"
         @mouseleave="isPaused = false"
       >
-        <div
+        <template
           v-for="(event, idx) in eventHistory"
           :key="idx"
-          :class="[
-            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 text-xs font-medium',
-            event.source === 'Twitch'
-              ? 'bg-slate-800 border-l-2 border-purple-500 text-slate-200'
-              : 'bg-slate-800 border-l-2 border-red-500 text-slate-200'
-          ]"
         >
-          <span class="font-semibold">{{ event.name }}</span>
-          <span class="text-slate-400">{{ event.type }}</span>
-          <span
-            v-if="event.value"
-            class="text-slate-400"
-          >{{ event.value }}</span>
-        </div>
+          <UTooltip
+            v-if="event.message"
+            :text="event.message"
+          >
+            <div
+              :class="[
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 text-xs font-medium',
+                event.source === 'Twitch'
+                  ? 'bg-slate-800 border-l-2 border-purple-500 text-slate-200'
+                  : 'bg-slate-800 border-l-2 border-red-500 text-slate-200'
+              ]"
+            >
+              <span class="font-semibold">{{ event.name }}</span>
+              <span class="text-slate-400">{{ event.type }}</span>
+              <span
+                v-if="event.value"
+                class="text-slate-400"
+              >{{ event.value }}</span>
+            </div>
+          </UTooltip>
+          <div
+            v-else
+            :class="[
+              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 text-xs font-medium',
+              event.source === 'Twitch'
+                ? 'bg-slate-800 border-l-2 border-purple-500 text-slate-200'
+                : 'bg-slate-800 border-l-2 border-red-500 text-slate-200'
+            ]"
+          >
+            <span class="font-semibold">{{ event.name }}</span>
+            <span class="text-slate-400">{{ event.type }}</span>
+            <span
+              v-if="event.value"
+              class="text-slate-400"
+            >{{ event.value }}</span>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -306,11 +330,11 @@ function saveEventHistory(item: EventItem) {
   }
 }
 
-function addEventPill(source: string, type: string, name: string, value?: string) {
-  const item = { source, type, name, value }
-  eventHistory.value.unshift(item)
+function addEventPill(source: string, type: string, name: string, value?: string, message?: string) {
+  const item = { source, type, name, value, message }
+  eventHistory.value.push(item)
   if (eventHistory.value.length > MAX_STORED_EVENTS) {
-    eventHistory.value.pop()
+    eventHistory.value.shift()
   }
   saveEventHistory(item)
   updateTickerDuration()
@@ -345,7 +369,7 @@ async function renderMessage(
   emotes?: Emote[]
 ) {
   const message: ChatMessage = {
-    id: messageId,
+    messageId: messageId,
     displayName,
     color,
     text,
@@ -399,7 +423,7 @@ function purgeOnBan(username: string, isTwitch: boolean) {
 }
 
 function removeMessage(messageId: string) {
-  twitchMessages.value = twitchMessages.value.filter(m => m.id !== messageId)
+  twitchMessages.value = twitchMessages.value.filter(m => m.messageId !== messageId)
 }
 
 function formatUrl(urlString: string): string {
@@ -529,8 +553,8 @@ function initializeClient(host: string, port: number) {
   // Check if StreamerbotClient is available
   if (StreamerbotClient) {
     client = new StreamerbotClient({
-      host: streamerbotHost,
-      port: streamerbotPort,
+      host,
+      port,
       password: '',
       immediate: false,
       autoReconnect: true,
@@ -633,7 +657,7 @@ function initializeClient(host: string, port: number) {
 
     // Event ticker handlers
     const handleTwitchEvent = (e: any) => {
-      let name, value
+      let name, value, message
       let validEvent = true
       const { data, event } = e
       if (!event) return
@@ -652,6 +676,7 @@ function initializeClient(host: string, port: number) {
             ? 'PrimeReSub'
             : `Tier ${data.subTier?.substring(0, 1)} ${type} for ${data.durationMonths} months`
           value = `/ Total: ${data.cumulativeMonths} months`
+          message = data.text
           break
         case 'GiftSub':
           name = data.user?.name
@@ -666,13 +691,14 @@ function initializeClient(host: string, port: number) {
         case 'Cheer':
           name = data.anonymous ? 'Anonymous' : data.user?.name
           value = String(data.bits)
+          message = data.text
           break
         default:
           validEvent = false
           break
       }
 
-      if (validEvent) addEventPill('Twitch', type, name, value)
+      if (validEvent) addEventPill('Twitch', type, name, value, message)
     }
 
     const youtubeEventWhitelist = new Set(['MembershipGift', 'SuperChat', 'SuperSticker'])
@@ -683,7 +709,8 @@ function initializeClient(host: string, port: number) {
       const type = event.type
       if (!youtubeEventWhitelist.has(type)) return
       const name = data?.user?.name || data?.sponsor?.name || ''
-      addEventPill('YouTube', type, name, '')
+      const message = data?.message || ''
+      addEventPill('YouTube', type, name, '', message)
     }
 
     client.on('Twitch.*', handleTwitchEvent)
