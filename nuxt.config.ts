@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
-    streamerbotHost: process.env.STREAMERBOT_HOST || '10.0.0.95',
+    streamerbotHost: process.env.STREAMERBOT_HOST || '127.0.0.1',
     streamerbotPort: process.env.STREAMERBOT_PORT || '8080'
   },
 
@@ -19,6 +19,9 @@ export default defineNuxtConfig({
   nitro: {
     experimental: {
       websocket: true
+    },
+    externals: {
+      inline: ['uncrypto', '@streamerbot/client']
     }
   },
   vite: {
