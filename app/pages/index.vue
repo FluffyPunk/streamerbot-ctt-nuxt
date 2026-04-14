@@ -15,14 +15,12 @@
     <!-- Settings Modal -->
     <SettingsModal
       v-model="showSettingsModal"
-      :host="streamerbotHost"
-      :port="streamerbotPort"
       :messages-on-top="messagesOnTop"
       @save="handleSettingsSave"
     />
 
     <!-- Events Ticker -->
-    <div class="h-12 bg-slate-900 border-b-2 border-slate-800 overflow-hidden shrink-0 flex items-center group">
+    <div class="h-8 bg-slate-900 border-b-2 border-slate-800 overflow-hidden shrink-0 flex items-center group">
       <div
         v-if="eventHistory.length"
         ref="tickerRef"
@@ -44,7 +42,7 @@
           >
             <div
               :class="[
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 text-s font-medium',
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 text-xs font-medium',
                 event.source === 'Twitch'
                   ? 'bg-slate-800 border-l-2 border-purple-500 text-slate-200'
                   : 'bg-slate-800 border-l-2 border-red-500 text-slate-200'
@@ -126,8 +124,7 @@
 </template>
 
 <script setup lang="ts">
-import { StreamerbotClient, type StreamerbotEventPayload } from '@streamerbot/client'
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import SettingsModal from '~/components/SettingsModal.vue'
 import TwitchMessage from '~/components/TwitchMessage.vue'
 import YouTubeMessage from '~/components/YouTubeMessage.vue'
@@ -148,9 +145,8 @@ const connectionStatus = ref<'connecting' | 'connected' | 'disconnected'>('conne
 const tickerDuration = ref(30)
 const showSettingsModal = ref(false)
 
-let streamerbotHost = '127.0.0.1'
-let streamerbotPort = 8080
-let client: StreamerbotClient | null = null
+let ws: WebSocket | null = null
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 const broadcasterNicknames = { twitch: '', youtube: '' }
 
 const statusText = computed(() => {
@@ -306,219 +302,205 @@ function removeMessage(messageId: string) {
   twitchMessages.value = twitchMessages.value.filter(m => m.messageId !== messageId)
 }
 
-function initializeClient(host: string, port: number) {
-  // Disconnect existing client
-  if (client) {
+function initializeRelay() {
+  if (ws) {
     try {
-      client.disconnect()
+      ws.close()
     } catch {
-      console.error('Failed to disconnect existing client')
+      // ignore
     }
-    client = null
+    ws = null
+  }
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
   }
 
   connectionStatus.value = 'connecting'
 
-  // Check if StreamerbotClient is available
-  if (StreamerbotClient) {
-    client = new StreamerbotClient({
-      host,
-      port,
-      password: '',
-      immediate: false,
-      autoReconnect: true,
-      onConnect: async () => {
-        connectionStatus.value = 'connected'
-        try {
-          const broadcaster = await client?.getBroadcaster()
-          if (broadcaster?.platforms) {
-            if (broadcaster.platforms.twitch?.broadcastUserName) {
-              broadcasterNicknames.twitch = broadcaster.platforms.twitch.broadcastUserName
-            }
-            // if (broadcaster.platforms.youtube?.name) {
-            // broadcasterNicknames.youtube = broadcaster.platforms.youtube.name.toLowerCase() // WIP YT handler
-            // }
-          }
-          console.log(broadcaster?.platforms)
-        } catch (err) {
-          console.error('Failed to get broadcaster info:', err)
-        }
-      },
-      onDisconnect: () => {
-        connectionStatus.value = 'disconnected'
-      },
-      onError: () => {
-        connectionStatus.value = 'disconnected'
-      }
-    })
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const wsUrl = `${protocol}//${window.location.host}/api/ws`
 
-    client.connect(30000).catch(() => {
-      connectionStatus.value = 'disconnected'
-    })
+  ws = new WebSocket(wsUrl)
 
-    // Chat message handler
-    const handleChatMessage = (e: StreamerbotEventPayload<'Twitch.ChatMessage' | 'YouTube.Message'>) => {
-      const { data, event } = e
-      if (!data) return
+  ws.onopen = () => {
+    // Connection to relay server established; streamerbot status comes via messages
+  }
 
-      const source = event?.source || 'Twitch'
-      const isTwitch = source === 'Twitch'
+  ws.onclose = () => {
+    connectionStatus.value = 'disconnected'
+    reconnectTimer = setTimeout(() => initializeRelay(), 3000)
+  }
 
-      let displayName, color, messageText, badges, mention, messageId, emotes, reply
+  ws.onerror = () => {
+    connectionStatus.value = 'disconnected'
+  }
 
-      if (source === 'YouTube') {
-        displayName = data.user?.name || 'Unknown'
-        color = colorFromName(displayName)
-        messageText = data.message || ''
-        emotes = data.emotes || []
+  ws.onmessage = (msg) => {
+    let parsed
+    try {
+      parsed = JSON.parse(msg.data)
+    } catch {
+      return
+    }
 
-        // Create emoji badges for YouTube
-        const badgeEmojis = getYouTubeBadgeText(data.user)
-        badges = badgeEmojis
-          ? badgeEmojis.split(' ').map(emoji => ({ name: emoji, imageUrl: undefined }))
-          : []
+    if (parsed.type === 'status') {
+      connectionStatus.value = parsed.status
+      return
+    }
 
-        messageId = data.messageId || data.id
-      } else {
-        emotes = data.emotes
-        displayName = data.user?.name || 'Unknown'
-        color = data.user?.color || '#5aa9ff'
-        messageText = data.text || ''
-        badges = data.user?.badges || []
-        mention = broadcasterNicknames.twitch && messageText.toLowerCase().includes(broadcasterNicknames.twitch)
-        messageId = data.messageId
-        reply = data.reply
-      }
-
-      // Check YouTube broadcaster mention
-      if (source === 'YouTube' && broadcasterNicknames.youtube) {
-        const isMention = messageText.toLowerCase().includes(broadcasterNicknames.youtube)
-        if (isMention) {
-          mention = true
+    if (parsed.type === 'broadcaster') {
+      const broadcaster = parsed.data
+      if (broadcaster?.platforms) {
+        if (broadcaster.platforms.twitch?.broadcastUserName) {
+          broadcasterNicknames.twitch = broadcaster.platforms.twitch.broadcastUserName
         }
       }
-
-      renderMessage(isTwitch, displayName, color, messageText, normalizeBadges(badges), !!mention, messageId, reply, emotes)
+      return
     }
 
-    client.on('Twitch.ChatMessage', handleChatMessage)
-    client.on('YouTube.Message', handleChatMessage)
-
-    // Ban/timeout handlers
-    client.on('Twitch.UserBanned', (e: StreamerbotEventPayload<'Twitch.UserBanned'>) => {
-      const username = e.data?.target_user_login
-      if (username) purgeOnBan(username, true)
-    })
-
-    client.on('YouTube.UserBanned', (e: StreamerbotEventPayload<'YouTube.UserBanned'>) => {
-      const username = e.data.bannedUser?.name
-      purgeOnBan(username, false)
-    })
-
-    client.on('Twitch.UserTimedOut', (e: StreamerbotEventPayload<'Twitch.UserTimedOut'>) => {
-      const username = e.data?.target_user_login
-      if (username) purgeOnBan(username, true)
-    })
-
-    client.on('Twitch.ChatMessageDeleted', (e: StreamerbotEventPayload<'Twitch.ChatMessageDeleted'>) => {
-      if (e.data?.targetMessageId) removeMessage(e.data.targetMessageId)
-    })
-
-    // Event ticker handlers
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handleTwitchEvent = (e: any) => {
-      let name, value, message
-      let validEvent = true
-      const { data, event } = e
-      if (!event) return
-      let type = event.type
-
-      switch (type) {
-        case 'Sub':
-          name = data.user?.name
-          type = data.is_prime
-            ? 'PrimeSub'
-            : `Tier ${data.sub_tier?.substring(0, 1)} ${type} for ${data.durationMonths} months`
-          break
-        case 'ReSub':
-          name = data.user?.name
-          type = data.is_prime
-            ? 'PrimeReSub'
-            : `Tier ${data.subTier?.substring(0, 1)} ${type} for ${data.durationMonths} months`
-          value = `/ Total: ${data.cumulativeMonths} months`
-          message = data.text
-          break
-        case 'GiftSub':
-          name = data.user?.name
-          type = data.fromCommunitySubGift ? 'RandomSub' : type
-          value = type === 'RandomSub'
-            ? `Tier ${data.subTier?.substring(0, 1)} to ${data.recipient?.name}`
-            : `${data.durationMonths} months of Tier ${data.subTier?.substring(0, 1)} to ${data.recipient?.name}`
-          break
-        case 'Raid':
-          name = data.user?.name
-          break
-        case 'Cheer':
-          name = data.anonymous ? 'Anonymous' : data.user?.name
-          value = String(data.bits)
-          message = data.text
-          break
-        default:
-          validEvent = false
-          break
-      }
-
-      if (validEvent) addEventPill('Twitch', type, name, value, message)
+    if (parsed.type === 'event') {
+      handleRelayedEvent(parsed.event, parsed.data)
     }
-
-    const youtubeEventWhitelist = new Set(['MembershipGift', 'SuperChat', 'SuperSticker'])
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handleYouTubeEvent = (e: any) => {
-      const { data, event } = e
-      if (!event) return
-      const type = event.type
-      if (!youtubeEventWhitelist.has(type)) return
-      const name = data?.user?.name || data?.sponsor?.name || ''
-      const message = data?.message || ''
-      addEventPill('YouTube', type, name, '', message)
-    }
-
-    client.on('Twitch.*', handleTwitchEvent)
-    client.on('YouTube.*', handleYouTubeEvent)
   }
 }
 
-function handleSettingsSave(data: { host: string, port: number, messagesOnTop: boolean }) {
-  streamerbotHost = data.host
-  streamerbotPort = data.port
-  messagesOnTop.value = data.messagesOnTop
+function handleRelayedEvent(event: { source: string, type: string }, data: Record<string, unknown>) {
+  if (!event) return
 
-  localStorage.setItem('streamerbot.host', streamerbotHost)
-  localStorage.setItem('streamerbot.port', String(streamerbotPort))
-  localStorage.setItem('messages.onTop', String(data.messagesOnTop))
+  const source = event.source
+  const type = event.type
+  const key = `${source}.${type}`
 
-  initializeClient(streamerbotHost, streamerbotPort)
+  // Chat messages
+  if (key === 'Twitch.ChatMessage' || key === 'YouTube.Message') {
+    handleChatMessage(source, data)
+    return
+  }
+
+  // Moderation
+  if (key === 'Twitch.UserBanned') {
+    const username = (data as { target_user_login?: string }).target_user_login
+    if (username) purgeOnBan(username, true)
+  }
+  if (key === 'YouTube.UserBanned') {
+    const bannedUser = (data as { bannedUser?: { name: string } }).bannedUser
+    if (bannedUser?.name) purgeOnBan(bannedUser.name, false)
+  }
+  if (key === 'Twitch.UserTimedOut') {
+    const username = (data as { target_user_login?: string }).target_user_login
+    if (username) purgeOnBan(username, true)
+  }
+  if (key === 'Twitch.ChatMessageDeleted') {
+    const targetMessageId = (data as { targetMessageId?: string }).targetMessageId
+    if (targetMessageId) removeMessage(targetMessageId)
+  }
+
+  // Event ticker
+  if (source === 'Twitch') handleTwitchTickerEvent(event, data)
+  if (source === 'YouTube') handleYouTubeTickerEvent(event, data)
 }
 
-// Initialize Streamer.bot client
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function handleChatMessage(source: string, data: any) {
+  const isTwitch = source === 'Twitch'
+
+  let displayName, color, messageText, badges, mention, messageId, emotes, reply
+
+  if (source === 'YouTube') {
+    displayName = data.user?.name || 'Unknown'
+    color = colorFromName(displayName)
+    messageText = data.message || ''
+    emotes = data.emotes || []
+
+    const badgeEmojis = getYouTubeBadgeText(data.user)
+    badges = badgeEmojis
+      ? badgeEmojis.split(' ').map((emoji: string) => ({ name: emoji, imageUrl: undefined }))
+      : []
+
+    messageId = data.messageId || data.id
+  } else {
+    emotes = data.emotes
+    displayName = data.user?.name || 'Unknown'
+    color = data.user?.color || '#5aa9ff'
+    messageText = data.text || ''
+    badges = data.user?.badges || []
+    mention = broadcasterNicknames.twitch && messageText.toLowerCase().includes(broadcasterNicknames.twitch)
+    messageId = data.messageId
+    reply = data.reply
+  }
+
+  if (source === 'YouTube' && broadcasterNicknames.youtube) {
+    const isMention = messageText.toLowerCase().includes(broadcasterNicknames.youtube)
+    if (isMention) mention = true
+  }
+
+  renderMessage(isTwitch, displayName, color, messageText, normalizeBadges(badges), !!mention, messageId, reply, emotes)
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function handleTwitchTickerEvent(event: { source: string, type: string }, data: any) {
+  let name, value, message
+  let validEvent = true
+  let type = event.type
+
+  switch (type) {
+    case 'Sub':
+      name = data.user?.name
+      type = data.is_prime
+        ? 'PrimeSub'
+        : `Tier ${data.sub_tier?.substring(0, 1)} ${type} for ${data.durationMonths} months`
+      break
+    case 'ReSub':
+      name = data.user?.name
+      type = data.is_prime
+        ? 'PrimeReSub'
+        : `Tier ${data.subTier?.substring(0, 1)} ${type} for ${data.durationMonths} months`
+      value = `/ Total: ${data.cumulativeMonths} months`
+      message = data.text
+      break
+    case 'GiftSub':
+      name = data.user?.name
+      type = data.fromCommunitySubGift ? 'RandomSub' : type
+      value = type === 'RandomSub'
+        ? `Tier ${data.subTier?.substring(0, 1)} to ${data.recipient?.name}`
+        : `${data.durationMonths} months of Tier ${data.subTier?.substring(0, 1)} to ${data.recipient?.name}`
+      break
+    case 'Raid':
+      name = data.user?.name
+      break
+    case 'Cheer':
+      name = data.anonymous ? 'Anonymous' : data.user?.name
+      value = String(data.bits)
+      message = data.text
+      break
+    default:
+      validEvent = false
+      break
+  }
+
+  if (validEvent) addEventPill('Twitch', type, name, value, message)
+}
+
+const youtubeEventWhitelist = new Set(['MembershipGift', 'SuperChat', 'SuperSticker'])
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function handleYouTubeTickerEvent(event: { source: string, type: string }, data: any) {
+  const type = event.type
+  if (!youtubeEventWhitelist.has(type)) return
+  const name = data?.user?.name || data?.sponsor?.name || ''
+  const message = data?.message || ''
+  addEventPill('YouTube', type, name, '', message)
+}
+
+function handleSettingsSave(data: { messagesOnTop: boolean }) {
+  messagesOnTop.value = data.messagesOnTop
+  localStorage.setItem('messages.onTop', String(data.messagesOnTop))
+}
+
+// Initialize relay connection
 onMounted(() => {
   if (!globalThis.window) return
-
-  const connectionParams = new URLSearchParams(window.location.search)
-
-  const streamerbotHostParam
-    = connectionParams.get('host') || localStorage.getItem('streamerbot.host') || '10.0.0.95'
-  const configuredPort = Number(
-    connectionParams.get('port') || localStorage.getItem('streamerbot.port') || 8080
-  )
-  const streamerbotPortParam = Number.isFinite(configuredPort) ? configuredPort : 8080
-
-  streamerbotHost = streamerbotHostParam
-  streamerbotPort = streamerbotPortParam
-
-  localStorage.setItem('streamerbot.host', streamerbotHost)
-  localStorage.setItem('streamerbot.port', String(streamerbotPort))
 
   // Load message position preference
   const savedMessagesOnTop = localStorage.getItem('messages.onTop')
@@ -529,7 +511,18 @@ onMounted(() => {
   loadEventHistory()
   updateTickerDuration()
 
-  initializeClient(streamerbotHost, streamerbotPort)
+  initializeRelay()
+})
+
+onUnmounted(() => {
+  if (reconnectTimer) clearTimeout(reconnectTimer)
+  if (ws) {
+    try {
+      ws.close()
+    } catch {
+      // ignore
+    }
+  }
 })
 </script>
 
