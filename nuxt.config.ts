@@ -7,11 +7,20 @@ export default defineNuxtConfig({
   },
   css: ['~/assets/css/main.css'],
 
-  routeRules: {
-    '/': { prerender: true }
+  runtimeConfig: {
+    streamerbotHost: process.env.STREAMERBOT_HOST || '10.0.0.95',
+    streamerbotPort: process.env.STREAMERBOT_PORT || '8080'
   },
 
+  routeRules: {},
+
   compatibilityDate: '2025-01-15',
+
+  nitro: {
+    experimental: {
+      websocket: true
+    }
+  },
   vite: {
     optimizeDeps: {
       include: ['@streamerbot/client', '@vue/devtools-core', '@vue/devtools-kit']

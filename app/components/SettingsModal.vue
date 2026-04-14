@@ -13,46 +13,15 @@
       <!-- Header -->
       <div class="border-b border-slate-700 px-6 py-4">
         <h2 class="text-lg font-semibold text-slate-100">
-          Streamer.bot Settings
+          Display Settings
         </h2>
       </div>
 
       <UForm
-        :validate="validateForm"
         :state="formData"
         class="p-6 space-y-4"
         @submit="onSave"
       >
-        <!-- Host Setting -->
-        <UFormField
-          label="Host"
-          name="host"
-        >
-          <UInput
-            v-model="formData.host"
-            type="text"
-            placeholder="e.g., 10.0.0.95"
-            required
-            class="w-full"
-          />
-        </UFormField>
-
-        <!-- Port Setting -->
-        <UFormField
-          label="Port"
-          name="port"
-        >
-          <UInput
-            v-model.number="formData.port"
-            type="number"
-            placeholder="e.g., 8080"
-            min="1"
-            max="65535"
-            required
-            class="w-full"
-          />
-        </UFormField>
-
         <!-- Messages Position Setting -->
         <UFormField
           label="Messages on Top"
@@ -64,7 +33,7 @@
 
         <!-- Info Text -->
         <div class="text-xs text-slate-400 p-3 bg-slate-800 rounded-lg">
-          Make sure Streamer.bot's WebSocket Server is accessible at this address.
+          Streamer.bot connection is configured on the server via STREAMERBOT_HOST and STREAMERBOT_PORT environment variables.
         </div>
 
         <!-- Footer -->
@@ -90,32 +59,26 @@
 
 <script setup lang="ts">
 import { computed, watch, reactive } from 'vue'
-import type { FormSubmitEvent, FormError } from '@nuxt/ui'
+import type { FormSubmitEvent } from '@nuxt/ui'
 
 interface Props {
   modelValue: boolean
-  host: string
-  port: number
   messagesOnTop: boolean
 }
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
-  (e: 'save', data: { host: string, port: number, messagesOnTop: boolean }): void
+  (e: 'save', data: { messagesOnTop: boolean }): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
-  host: '10.0.0.95',
-  port: 8080,
   messagesOnTop: false
 })
 
 const emit = defineEmits<Emits>()
 
 const formData = reactive({
-  host: props.host,
-  port: props.port,
   messagesOnTop: props.messagesOnTop
 })
 
@@ -128,28 +91,13 @@ watch(
   () => props.modelValue,
   (newVal) => {
     if (newVal) {
-      formData.host = props.host
-      formData.port = props.port
       formData.messagesOnTop = props.messagesOnTop
     }
   }
 )
 
-function validateForm(state: Partial<{ host: string, port: number, messagesOnTop: boolean }>): FormError[] {
-  const errors = []
-  if (!state.host || !state.host.trim()) {
-    errors.push({ name: 'host', message: 'Host is required' })
-  }
-  if (!state.port || state.port < 1 || state.port > 65535) {
-    errors.push({ name: 'port', message: 'Port must be between 1 and 65535' })
-  }
-  return errors
-}
-
-function onSave(event: FormSubmitEvent<{ host: string, port: number, messagesOnTop: boolean }>) {
+function onSave(event: FormSubmitEvent<{ messagesOnTop: boolean }>) {
   emit('save', {
-    host: event.data.host.trim(),
-    port: event.data.port,
     messagesOnTop: event.data.messagesOnTop
   })
   isOpen.value = false
