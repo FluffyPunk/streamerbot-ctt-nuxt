@@ -227,9 +227,13 @@ function updateTickerDuration() {
   })
 }
 
-function scrollToBottom(container: HTMLElement | undefined) {
+function autoScroll(container: HTMLElement | undefined) {
   if (container) {
-    container.scrollTop = container.scrollHeight
+    if (messagesOnTop.value) {
+      container.scrollTop = 0
+    } else {
+      container.scrollTop = container.scrollHeight
+    }
   }
 }
 
@@ -261,13 +265,13 @@ async function renderMessage(
     if (twitchMessages.value.length > 100) {
       twitchMessages.value.pop()
     }
-    nextTick(() => scrollToBottom(twitchChatRef.value))
+    nextTick(() => autoScroll(twitchChatRef.value))
   } else {
     youtubeMessages.value.unshift(message)
     if (youtubeMessages.value.length > 100) {
       youtubeMessages.value.pop()
     }
-    nextTick(() => scrollToBottom(youtubeChatRef.value))
+    nextTick(() => autoScroll(youtubeChatRef.value))
   }
 }
 
