@@ -97,7 +97,7 @@
         >
           <div
             v-for="message in twitchMessages"
-            :key="message.id"
+            :key="message.messageId"
             :class="[
               'bg-slate-800 rounded-lg p-3 border text-s',
               message.mention ? 'border-amber-500 border-l-2' : 'border-slate-700'
@@ -180,7 +180,7 @@
         >
           <div
             v-for="message in youtubeMessages"
-            :key="message.id"
+            :key="message.messageId"
             class="bg-slate-800 rounded-lg p-3 border border-slate-700 text-xs"
           >
             <div class="flex items-center gap-2 mb-2 flex-wrap">
@@ -405,7 +405,7 @@ function normalizeBadges(badges: unknown): Badge[] {
   return []
 }
 
-function getYouTubeBadgeText(user: any): string {
+function getYouTubeBadgeText(user: { isOwner: boolean, isModerator: boolean, isSponsor: boolean, isVerified: boolean }): string {
   let badgeText = ''
   if (user?.isOwner) badgeText += '👑 '
   if (user?.isModerator) badgeText += '🗡 '
@@ -656,6 +656,7 @@ function initializeClient(host: string, port: number) {
     })
 
     // Event ticker handlers
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleTwitchEvent = (e: any) => {
       let name, value, message
       let validEvent = true
@@ -703,6 +704,7 @@ function initializeClient(host: string, port: number) {
 
     const youtubeEventWhitelist = new Set(['MembershipGift', 'SuperChat', 'SuperSticker'])
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleYouTubeEvent = (e: any) => {
       const { data, event } = e
       if (!event) return

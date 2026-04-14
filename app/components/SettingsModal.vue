@@ -12,7 +12,9 @@
     >
       <!-- Header -->
       <div class="border-b border-slate-700 px-6 py-4">
-        <h2 class="text-lg font-semibold text-slate-100">Streamer.bot Settings</h2>
+        <h2 class="text-lg font-semibold text-slate-100">
+          Streamer.bot Settings
+        </h2>
       </div>
 
       <!-- Content -->
@@ -27,7 +29,7 @@
             type="text"
             placeholder="e.g., 10.0.0.95"
             class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
-          />
+          >
         </div>
 
         <!-- Port Setting -->
@@ -42,7 +44,7 @@
             min="1"
             max="65535"
             class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
-          />
+          >
         </div>
 
         <!-- Info Text -->
@@ -54,14 +56,14 @@
       <!-- Footer -->
       <div class="border-t border-slate-700 px-6 py-4 flex gap-3 justify-end">
         <button
-          @click="onClose"
           class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
+          @click="onClose"
         >
           Cancel
         </button>
         <button
-          @click="onSave"
           class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
+          @click="onSave"
         >
           Save Settings
         </button>
@@ -81,7 +83,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
-  (e: 'save', data: { host: string; port: number }): void
+  (e: 'save', data: { host: string, port: number }): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -99,7 +101,7 @@ const formData = ref({
 
 const isOpen = computed({
   get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
+  set: value => emit('update:modelValue', value)
 })
 
 watch(
