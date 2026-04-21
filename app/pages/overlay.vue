@@ -70,7 +70,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import type { Badge, Emote, ChatMessage, MessagePart } from '~/types/chat'
+import type { Badge, Emote, ChatMessage } from '~/types/chat'
+import { parseMessageWithEmotes } from '~/utils/parseMessageParts'
 
 const chatRef = ref<HTMLElement>()
 const messages = ref<ChatMessage[]>([])
@@ -81,8 +82,6 @@ let ws: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 const broadcasterNicknames = { twitch: '', youtube: '' }
 
-const URL_REGEX = /(https?:\/\/[^\s,]+|www\.[^\s,]+|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?::\d+)?(?:\/[^\s,]*)?|(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?(?:\/[^\s,]*)?)/
-
 function colorFromName(name: string): string {
   let hash = 0
   for (let i = 0; i < name.length; i++) {
@@ -90,104 +89,6 @@ function colorFromName(name: string): string {
   }
   const h = Math.abs(hash) % 360
   return `hsl(${h}, 70%, 65%)`
-}
-
-function formatUrl(urlString: string): string {
-  const url = urlString.replace(/[).,!?:;]+$/, '')
-  if (!url.match(/^https?:\/\//)) {
-    return `https://${url}`
-  }
-  return url
-}
-
-function parseMessageWithEmotes(text: string, emotes: Emote[]): MessagePart[] {
-  if (!emotes) emotes = []
-
-  const parts: MessagePart[] = []
-  const emotesMap = new Map(emotes.map(e => [e.name?.toLowerCase(), e]))
-
-  const segments: Array<{ type: string, content: string, start: number, end: number, url?: string, emoteName?: string, emoteUrl?: string }> = []
-
-  for (const [emoteLower, emote] of emotesMap) {
-    if (!emote.imageUrl || !emoteLower) continue
-
-    const escapedEmote = emoteLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const emoteRegex = new RegExp(`\\b${escapedEmote}\\b|${escapedEmote}`, 'g')
-
-    let match
-    while ((match = emoteRegex.exec(text)) !== null) {
-      segments.push({
-        type: 'emote',
-        content: match[0],
-        start: match.index,
-        end: match.index + match[0].length,
-        emoteName: emote.name,
-        emoteUrl: emote.imageUrl
-      })
-    }
-  }
-
-  const linkRegex = new RegExp(URL_REGEX.source, 'g')
-  let match
-  while ((match = linkRegex.exec(text)) !== null) {
-    const url = match[0]
-    segments.push({
-      type: 'link',
-      content: url,
-      start: match.index,
-      end: match.index + url.length,
-      url: formatUrl(url)
-    })
-  }
-
-  segments.sort((a, b) => a.start - b.start)
-
-  const filteredSegments: typeof segments = []
-  for (const segment of segments) {
-    if (filteredSegments.some(s =>
-      (segment.start < s.end && segment.end > s.start)
-    )) {
-      continue
-    }
-    filteredSegments.push(segment)
-  }
-
-  let lastEnd = 0
-
-  for (const segment of filteredSegments) {
-    if (segment.start > lastEnd) {
-      parts.push({
-        type: 'text',
-        content: text.slice(lastEnd, segment.start)
-      })
-    }
-
-    if (segment.type === 'emote') {
-      parts.push({
-        type: 'emote',
-        content: segment.content,
-        emoteUrl: segment.emoteUrl!,
-        emoteName: segment.emoteName
-      })
-    } else if (segment.type === 'link') {
-      parts.push({
-        type: 'link',
-        content: segment.content,
-        linkUrl: segment.url!
-      })
-    }
-
-    lastEnd = segment.end
-  }
-
-  if (lastEnd < text.length) {
-    parts.push({
-      type: 'text',
-      content: text.slice(lastEnd)
-    })
-  }
-
-  return parts
 }
 
 function normalizeBadges(badges: unknown): Badge[] {
