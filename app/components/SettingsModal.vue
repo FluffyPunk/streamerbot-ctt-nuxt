@@ -31,10 +31,28 @@
           <USwitch v-model="formData.messagesOnTop" />
         </UFormField>
 
-        <!-- Info Text -->
-        <div class="text-xs text-slate-400 p-3 bg-slate-800 rounded-lg">
-          Streamer.bot connection is configured on the server via STREAMERBOT_HOST and STREAMERBOT_PORT environment variables.
-        </div>
+        <UFormField
+          label="Streamer.bot Host"
+          name="streamerbotHost"
+        >
+          <UInput
+            v-model="formData.streamerbotHost"
+            placeholder="127.0.0.1"
+          />
+        </UFormField>
+
+        <UFormField
+          label="Streamer.bot Port"
+          name="streamerbotPort"
+        >
+          <UInput
+            v-model="formData.streamerbotPort"
+            type="number"
+            min="1"
+            max="65535"
+            placeholder="8080"
+          />
+        </UFormField>
 
         <!-- Footer -->
         <div class="border-t border-slate-700 -mx-6 -mb-6 px-6 py-4 flex gap-3 justify-end">
@@ -62,24 +80,30 @@ import { computed, watch, reactive } from 'vue'
 import type { FormSubmitEvent } from '@nuxt/ui'
 
 interface Props {
-  modelValue: boolean
-  messagesOnTop: boolean
+  modelValue?: boolean
+  messagesOnTop?: boolean
+  streamerbotHost?: string
+  streamerbotPort?: string
 }
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
-  (e: 'save', data: { messagesOnTop: boolean }): void
+  (e: 'save', data: { messagesOnTop: boolean, streamerbotHost: string, streamerbotPort: string }): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
-  messagesOnTop: false
+  messagesOnTop: false,
+  streamerbotHost: '127.0.0.1',
+  streamerbotPort: '8080'
 })
 
 const emit = defineEmits<Emits>()
 
 const formData = reactive({
-  messagesOnTop: props.messagesOnTop
+  messagesOnTop: props.messagesOnTop,
+  streamerbotHost: props.streamerbotHost,
+  streamerbotPort: props.streamerbotPort
 })
 
 const isOpen = computed({
@@ -92,13 +116,17 @@ watch(
   (newVal) => {
     if (newVal) {
       formData.messagesOnTop = props.messagesOnTop
+      formData.streamerbotHost = props.streamerbotHost
+      formData.streamerbotPort = props.streamerbotPort
     }
   }
 )
 
-function onSave(event: FormSubmitEvent<{ messagesOnTop: boolean }>) {
+function onSave(event: FormSubmitEvent<{ messagesOnTop: boolean, streamerbotHost: string, streamerbotPort: string }>) {
   emit('save', {
-    messagesOnTop: event.data.messagesOnTop
+    messagesOnTop: event.data.messagesOnTop,
+    streamerbotHost: event.data.streamerbotHost.trim(),
+    streamerbotPort: event.data.streamerbotPort.trim()
   })
   isOpen.value = false
 }

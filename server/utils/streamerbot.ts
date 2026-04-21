@@ -5,12 +5,16 @@ interface StreamerbotState {
   client: StreamerbotClient | null
   status: 'connecting' | 'connected' | 'disconnected'
   broadcaster: unknown | null
+  host: string
+  port: number
 }
 
 const state: StreamerbotState = {
   client: null,
   status: 'disconnected',
-  broadcaster: null
+  broadcaster: null,
+  host: '127.0.0.1',
+  port: 8080
 }
 
 export function getStreamerbot() {
@@ -26,6 +30,9 @@ function broadcastStatus() {
 }
 
 export function initStreamerbot(host: string, port: number) {
+  state.host = host
+  state.port = port
+
   if (state.client) {
     try { state.client.disconnect() } catch { /* ignore */ }
     state.client = null
@@ -77,4 +84,8 @@ export function initStreamerbot(host: string, port: number) {
   })
 
   state.client = client
+}
+
+export function setStreamerbotConfig(host: string, port: number) {
+  initStreamerbot(host, port)
 }

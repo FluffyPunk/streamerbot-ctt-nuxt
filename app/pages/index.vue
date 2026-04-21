@@ -16,6 +16,8 @@
     <SettingsModal
       v-model="showSettingsModal"
       :messages-on-top="messagesOnTop"
+      :streamerbot-host="streamerbotHost"
+      :streamerbot-port="streamerbotPort"
       @save="handleSettingsSave"
     />
 
@@ -140,6 +142,8 @@ const youtubeMessages = ref<ChatMessage[]>([])
 const eventHistory = ref<EventItem[]>([])
 const isPaused = ref(false)
 const messagesOnTop = ref(false)
+const streamerbotHost = ref('127.0.0.1')
+const streamerbotPort = ref('8080')
 
 const connectionStatus = ref<'connecting' | 'connected' | 'disconnected'>('connecting')
 const tickerDuration = ref(30)
@@ -170,6 +174,8 @@ const statusClass = computed(() => {
 const MAX_STORED_EVENTS = 10
 const EVENTS_STORAGE_KEY = 'eventsHistory'
 const TICKER_PX_PER_SEC = 100
+const STREAMERBOT_HOST_STORAGE_KEY = 'streamerbot.host'
+const STREAMERBOT_PORT_STORAGE_KEY = 'streamerbot.port'
 
 function colorFromName(name: string): string {
   let hash = 0
@@ -497,13 +503,51 @@ function handleYouTubeTickerEvent(event: { source: string, type: string }, data:
   addEventPill('YouTube', type, name, '', message)
 }
 
-function handleSettingsSave(data: { messagesOnTop: boolean }) {
+async function syncStreamerbotConfig(host: string, port: string) {
+  await $fetch('/api/streamerbot-config', {
+    method: 'POST',
+    body: {
+      host,
+      port: Number(port)
+    }
+  })
+}
+
+async function loadStreamerbotConfig() {
+  const serverConfig = await $fetch<{ host: string, port: number }>('/api/streamerbot-config')
+
+  const savedHost = localStorage.getItem(STREAMERBOT_HOST_STORAGE_KEY)
+  const savedPort = localStorage.getItem(STREAMERBOT_PORT_STORAGE_KEY)
+
+  streamerbotHost.value = savedHost || serverConfig.host || '127.0.0.1'
+  streamerbotPort.value = savedPort || String(serverConfig.port || 8080)
+
+  if (savedHost || savedPort) {
+    await syncStreamerbotConfig(streamerbotHost.value, streamerbotPort.value)
+  }
+}
+
+async function handleSettingsSave(data: { messagesOnTop: boolean, streamerbotHost: string, streamerbotPort: string }) {
+  const host = data.streamerbotHost.trim()
+  const port = data.streamerbotPort.trim()
+  const parsedPort = Number(port)
+
+  if (!host || !Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
+    return
+  }
+
   messagesOnTop.value = data.messagesOnTop
   localStorage.setItem('messages.onTop', String(data.messagesOnTop))
+  localStorage.setItem(STREAMERBOT_HOST_STORAGE_KEY, host)
+  localStorage.setItem(STREAMERBOT_PORT_STORAGE_KEY, port)
+
+  await syncStreamerbotConfig(host, port)
+
+  window.location.reload()
 }
 
 // Initialize relay connection
-onMounted(() => {
+onMounted(async () => {
   if (!globalThis.window) return
 
   // Load message position preference
@@ -514,6 +558,12 @@ onMounted(() => {
 
   loadEventHistory()
   updateTickerDuration()
+
+  try {
+    await loadStreamerbotConfig()
+  } catch {
+    // Keep defaults if config endpoint is unavailable
+  }
 
   initializeRelay()
 })
