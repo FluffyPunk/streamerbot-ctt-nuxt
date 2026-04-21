@@ -171,6 +171,13 @@ const statusClass = computed(() => {
   return map[connectionStatus.value]
 })
 
+interface twitchPunishedUser {
+  id: string
+  login: string
+  name: string
+  type: string
+}
+
 const MAX_STORED_EVENTS = 10
 const EVENTS_STORAGE_KEY = 'eventsHistory'
 const TICKER_PX_PER_SEC = 100
@@ -381,7 +388,6 @@ function handleRelayedEvent(event: { source: string, type: string }, data: Recor
   const source = event.source
   const type = event.type
   const key = `${source}.${type}`
-
   // Chat messages
   if (key === 'Twitch.ChatMessage' || key === 'YouTube.Message') {
     handleChatMessage(source, data)
@@ -390,7 +396,7 @@ function handleRelayedEvent(event: { source: string, type: string }, data: Recor
 
   // Moderation
   if (key === 'Twitch.UserBanned') {
-    const username = (data as { target_user_login?: string }).target_user_login
+    const username = (data.targetUser as twitchPunishedUser).login
     if (username) purgeOnBan(username, true)
   }
   if (key === 'YouTube.UserBanned') {
@@ -398,11 +404,11 @@ function handleRelayedEvent(event: { source: string, type: string }, data: Recor
     if (bannedUser?.name) purgeOnBan(bannedUser.name, false)
   }
   if (key === 'Twitch.UserTimedOut') {
-    const username = (data as { target_user_login?: string }).target_user_login
+    const username = (data.targetUser as twitchPunishedUser).login
     if (username) purgeOnBan(username, true)
   }
   if (key === 'Twitch.ChatMessageDeleted') {
-    const targetMessageId = (data as { targetMessageId?: string }).targetMessageId
+    const targetMessageId = data.messageId as string
     if (targetMessageId) removeMessage(targetMessageId)
   }
 
