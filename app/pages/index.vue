@@ -18,6 +18,8 @@
       :messages-on-top="messagesOnTop"
       :streamerbot-host="streamerbotHost"
       :streamerbot-port="streamerbotPort"
+      :discord-webhook-url="discordWebhookUrl"
+      :discord-platform="discordPlatform"
       @save="handleSettingsSave"
     />
 
@@ -144,6 +146,8 @@ const isPaused = ref(false)
 const messagesOnTop = ref(false)
 const streamerbotHost = ref('127.0.0.1')
 const streamerbotPort = ref('8080')
+const discordWebhookUrl = ref('')
+const discordPlatform = ref<'Twitch' | 'YouTube'>('Twitch')
 
 const connectionStatus = ref<'connecting' | 'connected' | 'disconnected'>('connecting')
 const tickerDuration = ref(30)
@@ -183,6 +187,8 @@ const EVENTS_STORAGE_KEY = 'eventsHistory'
 const TICKER_PX_PER_SEC = 100
 const STREAMERBOT_HOST_STORAGE_KEY = 'streamerbot.host'
 const STREAMERBOT_PORT_STORAGE_KEY = 'streamerbot.port'
+const DISCORD_WEBHOOK_URL_STORAGE_KEY = 'discord.webhookUrl'
+const DISCORD_PLATFORM_STORAGE_KEY = 'discord.platform'
 
 function colorFromName(name: string): string {
   let hash = 0
@@ -533,10 +539,44 @@ async function loadStreamerbotConfig() {
   }
 }
 
-async function handleSettingsSave(data: { messagesOnTop: boolean, streamerbotHost: string, streamerbotPort: string }) {
+async function syncDiscordConfig(webhookUrl: string, platform: 'Twitch' | 'YouTube') {
+  await $fetch('/api/discord-config', {
+    method: 'POST',
+    body: {
+      webhookUrl,
+      platform
+    }
+  })
+}
+
+async function loadDiscordConfig() {
+  const serverConfig = await $fetch<{
+    webhookUrl: string
+    platform: 'Twitch' | 'YouTube'
+  }>('/api/discord-config')
+
+  const savedUrl = localStorage.getItem(DISCORD_WEBHOOK_URL_STORAGE_KEY)
+  const savedPlatform = localStorage.getItem(DISCORD_PLATFORM_STORAGE_KEY)
+
+  discordWebhookUrl.value = savedUrl || serverConfig.webhookUrl || ''
+  discordPlatform.value = (savedPlatform as 'Twitch' | 'YouTube') || serverConfig.platform || 'Twitch'
+
+  if (savedUrl || savedPlatform) {
+    await syncDiscordConfig(discordWebhookUrl.value, discordPlatform.value)
+  }
+}
+
+async function handleSettingsSave(data: {
+  messagesOnTop: boolean
+  streamerbotHost: string
+  streamerbotPort: string
+  discordWebhookUrl: string
+  discordPlatform: 'Twitch' | 'YouTube'
+}) {
   const host = data.streamerbotHost.trim()
   const port = data.streamerbotPort.trim()
   const parsedPort = Number(port)
+  const webhookUrl = data.discordWebhookUrl.trim()
 
   if (!host || !Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
     return
@@ -546,6 +586,13 @@ async function handleSettingsSave(data: { messagesOnTop: boolean, streamerbotHos
   localStorage.setItem('messages.onTop', String(data.messagesOnTop))
   localStorage.setItem(STREAMERBOT_HOST_STORAGE_KEY, host)
   localStorage.setItem(STREAMERBOT_PORT_STORAGE_KEY, port)
+
+  // Save Discord settings
+  if (webhookUrl) {
+    localStorage.setItem(DISCORD_WEBHOOK_URL_STORAGE_KEY, webhookUrl)
+    localStorage.setItem(DISCORD_PLATFORM_STORAGE_KEY, data.discordPlatform)
+    await syncDiscordConfig(webhookUrl, data.discordPlatform)
+  }
 
   await syncStreamerbotConfig(host, port)
 
@@ -567,6 +614,12 @@ onMounted(async () => {
 
   try {
     await loadStreamerbotConfig()
+  } catch {
+    // Keep defaults if config endpoint is unavailable
+  }
+
+  try {
+    await loadDiscordConfig()
   } catch {
     // Keep defaults if config endpoint is unavailable
   }

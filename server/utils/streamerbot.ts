@@ -1,5 +1,6 @@
 import { StreamerbotClient } from '@streamerbot/client'
 import { broadcastToClients } from '../api/ws'
+import { sendDiscordNotification } from './discord'
 
 interface StreamerbotState {
   client: StreamerbotClient | null
@@ -72,10 +73,41 @@ export function initStreamerbot(host: string, port: number) {
   // Subscribe to all events and relay them via wildcards
   client.on('Twitch.*', (e) => {
     broadcast('event', { event: e.event, data: e.data })
+    console.log(e)
+
+    // Handle Twitch stream online
+    const eventName = String(e.event.type)
+    if (eventName === 'StreamOnline') {
+      const eventData = e.data as Record<string, unknown>
+      const b = state.broadcaster as { platforms?: { twitch?: { broadcastUser: string, broadcastUserName: string } } } | null
+
+      sendDiscordNotification('Twitch', {
+        displayName: b?.platforms?.twitch?.broadcastUser || 'Unknown',
+        login: b?.platforms?.twitch?.broadcastUserName,
+        startedAt: eventData?.started_at as string | undefined
+      }).catch((err) => {
+        console.error('[streamerbot] Failed to send Discord notification:', err)
+      })
+    }
   })
 
   client.on('YouTube.*', (e) => {
     broadcast('event', { event: e.event, data: e.data })
+
+    // Handle YouTube stream online
+    const eventName = String(e.event.type)
+    if (eventName === 'BroadcastStarted') {
+      const b = state.broadcaster as { platforms?: { youtube?: { broadcastUserName: string, broadcastUserId: string, broadcastUserProfileImage: string } } } | null
+
+      sendDiscordNotification('YouTube', {
+        displayName: b?.platforms?.youtube?.broadcastUserName || 'Unknown',
+        login: b?.platforms?.youtube?.broadcastUserName,
+        channelId: b?.platforms?.youtube?.broadcastUserId,
+        profileImageUrl: b?.platforms?.youtube?.broadcastUserProfileImage
+      }).catch((err) => {
+        console.error('[streamerbot] Failed to send Discord notification:', err)
+      })
+    }
   })
 
   client.connect(30000).catch(() => {

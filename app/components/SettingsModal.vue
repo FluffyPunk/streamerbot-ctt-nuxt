@@ -62,6 +62,39 @@
         </div>
 
         <div
+          v-else-if="activeTab === 'discord'"
+          class="space-y-4"
+        >
+          <UFormField
+            label="Discord Webhook URL"
+            name="discordWebhookUrl"
+            class="w-full"
+          >
+            <UInput
+              v-model="formData.discordWebhookUrl"
+              type="password"
+              placeholder="https://discord.com/api/webhooks/..."
+              class="w-full"
+            />
+          </UFormField>
+
+          <UFormField
+            label="Notify on Stream Online"
+            name="discordPlatform"
+          >
+            <URadioGroup
+              v-model="formData.discordPlatform"
+              :items="[
+                { value: 'Twitch', label: 'Twitch' },
+                { value: 'YouTube', label: 'YouTube' }
+              ]"
+              orientation="horizontal"
+              variant="table"
+            />
+          </UFormField>
+        </div>
+
+        <div
           v-else
           class="space-y-4"
         >
@@ -105,18 +138,28 @@ interface Props {
   messagesOnTop?: boolean
   streamerbotHost?: string
   streamerbotPort?: string
+  discordWebhookUrl?: string
+  discordPlatform?: 'Twitch' | 'YouTube'
 }
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
-  (e: 'save', data: { messagesOnTop: boolean, streamerbotHost: string, streamerbotPort: string }): void
+  (e: 'save', data: {
+    messagesOnTop: boolean
+    streamerbotHost: string
+    streamerbotPort: string
+    discordWebhookUrl: string
+    discordPlatform: 'Twitch' | 'YouTube'
+  }): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
   messagesOnTop: false,
   streamerbotHost: '127.0.0.1',
-  streamerbotPort: '8080'
+  streamerbotPort: '8080',
+  discordWebhookUrl: '',
+  discordPlatform: 'Twitch'
 })
 
 const emit = defineEmits<Emits>()
@@ -124,15 +167,18 @@ const emit = defineEmits<Emits>()
 const formData = reactive({
   messagesOnTop: props.messagesOnTop,
   streamerbotHost: props.streamerbotHost,
-  streamerbotPort: props.streamerbotPort
+  streamerbotPort: props.streamerbotPort,
+  discordWebhookUrl: props.discordWebhookUrl,
+  discordPlatform: props.discordPlatform
 })
 
 const tabItems = [
   { label: 'Streamer.bot', value: 'streamerbot' },
+  { label: 'Discord', value: 'discord' },
   { label: 'Visuals', value: 'visuals' }
 ]
 
-const activeTab = ref<'streamerbot' | 'visuals'>('streamerbot')
+const activeTab = ref<'streamerbot' | 'discord' | 'visuals'>('streamerbot')
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -146,16 +192,26 @@ watch(
       formData.messagesOnTop = props.messagesOnTop
       formData.streamerbotHost = props.streamerbotHost
       formData.streamerbotPort = props.streamerbotPort
+      formData.discordWebhookUrl = props.discordWebhookUrl
+      formData.discordPlatform = props.discordPlatform
       activeTab.value = 'streamerbot'
     }
   }
 )
 
-function onSave(event: FormSubmitEvent<{ messagesOnTop: boolean, streamerbotHost: string, streamerbotPort: string }>) {
+function onSave(event: FormSubmitEvent<{
+  messagesOnTop: boolean
+  streamerbotHost: string
+  streamerbotPort: string
+  discordWebhookUrl: string
+  discordPlatform: 'Twitch' | 'YouTube'
+}>) {
   emit('save', {
     messagesOnTop: event.data.messagesOnTop,
     streamerbotHost: event.data.streamerbotHost.trim(),
-    streamerbotPort: event.data.streamerbotPort.trim()
+    streamerbotPort: event.data.streamerbotPort.trim(),
+    discordWebhookUrl: event.data.discordWebhookUrl.trim(),
+    discordPlatform: event.data.discordPlatform
   })
   isOpen.value = false
 }
