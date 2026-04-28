@@ -1,6 +1,6 @@
-import { h } from 'vue'
+import { h, type FunctionalComponent } from 'vue'
 
-const TwitchIcon = () => h(
+const TwitchIcon: FunctionalComponent = () => h(
   'svg',
   { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 24 24', fill: 'none' },
   [
@@ -15,7 +15,7 @@ const TwitchIcon = () => h(
   ]
 )
 
-const YoutubeIcon = () => h(
+const YoutubeIcon: FunctionalComponent = () => h(
   'svg',
   { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 24 24', fill: 'none' },
   [

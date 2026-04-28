@@ -3,13 +3,13 @@
     <!-- Header -->
     <header class="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0 font-semibold text-sm">
       <h1>Live Chat</h1>
-      <button
+      <UButton
         :class="['px-2.5 py-1 rounded-full text-xs cursor-pointer hover:opacity-80 transition-opacity', statusClass]"
         title="Click to configure settings"
         @click="showSettingsModal = true"
       >
         {{ statusText }}
-      </button>
+      </UButton>
     </header>
 
     <!-- Settings Modal -->
@@ -22,105 +22,36 @@
     />
 
     <!-- Events Ticker -->
-    <div class="h-8 bg-slate-900 border-b-2 border-slate-800 overflow-hidden shrink-0 flex items-center group">
-      <div
-        v-if="eventHistory.length"
-        ref="tickerRef"
-        class="flex items-center gap-6 whitespace-nowrap animate-ticker pl-full"
-        :style="{
-          animationDuration: tickerDuration + 's',
-          animationPlayState: isPaused ? 'paused' : 'running'
-        }"
-        @mouseenter="isPaused = true"
-        @mouseleave="isPaused = false"
-      >
-        <template
-          v-for="(event, idx) in eventHistory"
-          :key="idx"
-        >
-          <UTooltip
-            v-if="event.message"
-            :text="event.message"
-          >
-            <div
-              :class="[
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 text-xs font-medium',
-                event.source === 'Twitch'
-                  ? 'bg-slate-800 border-l-2 border-purple-500 text-slate-200'
-                  : 'bg-slate-800 border-l-2 border-red-500 text-slate-200'
-              ]"
-            >
-              <span class="font-semibold">{{ event.name }}</span>
-              <span class="text-slate-400">{{ event.type }}</span>
-              <span
-                v-if="event.value"
-                class="text-slate-400"
-              >{{ event.value }}</span>
-            </div>
-          </UTooltip>
-          <div
-            v-else
-            :class="[
-              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 text-xs font-medium',
-              event.source === 'Twitch'
-                ? 'bg-slate-800 border-l-2 border-purple-500 text-slate-200'
-                : 'bg-slate-800 border-l-2 border-red-500 text-slate-200'
-            ]"
-          >
-            <span class="font-semibold">{{ event.name }}</span>
-            <span class="text-slate-400">{{ event.type }}</span>
-            <span
-              v-if="event.value"
-              class="text-slate-400"
-            >{{ event.value }}</span>
-          </div>
-        </template>
-      </div>
-    </div>
+    <EventsTicker :events="eventHistory" />
 
     <!-- Chat Columns -->
     <div class="flex-1 flex gap-0 overflow-hidden">
-      <!-- Twitch Column -->
-      <div class="flex-1 flex flex-col border-r border-slate-800">
-        <div class="column-header">
-          <UIcon
-            :name="TwitchIcon"
-            class="w-3.5 h-3.5"
-          />
-          <span>Twitch</span>
-        </div>
-        <div
-          ref="twitchChatRef"
-          :class="['flex-1 overflow-y-auto flex gap-2 p-3', messagesOnTop ? 'flex-col' : 'flex-col-reverse']"
-        >
-          <TwitchMessage
-            v-for="message in twitchMessages"
-            :key="message.messageId"
-            :message="message"
-          />
-        </div>
-      </div>
+      <ChatColumn
+        ref="twitchColumnRef"
+        :icon="TwitchIcon"
+        label="Twitch"
+        :messages-on-top="messagesOnTop"
+        border-right
+      >
+        <TwitchMessage
+          v-for="message in twitchMessages"
+          :key="message.messageId"
+          :message="message"
+        />
+      </ChatColumn>
 
-      <!-- YouTube Column -->
-      <div class="flex-1 flex flex-col">
-        <div class="column-header">
-          <UIcon
-            :name="YoutubeIcon"
-            class="w-3.5 h-3.5"
-          />
-          <span>YouTube</span>
-        </div>
-        <div
-          ref="youtubeChatRef"
-          :class="['flex-1 overflow-y-auto flex gap-2 p-3', messagesOnTop ? 'flex-col' : 'flex-col-reverse']"
-        >
-          <YouTubeMessage
-            v-for="message in youtubeMessages"
-            :key="message.messageId"
-            :message="message"
-          />
-        </div>
-      </div>
+      <ChatColumn
+        ref="youtubeColumnRef"
+        :icon="YoutubeIcon"
+        label="YouTube"
+        :messages-on-top="messagesOnTop"
+      >
+        <YouTubeMessage
+          v-for="message in youtubeMessages"
+          :key="message.messageId"
+          :message="message"
+        />
+      </ChatColumn>
     </div>
   </div>
 </template>
@@ -133,20 +64,19 @@ import YouTubeMessage from '~/components/YouTubeMessage.vue'
 import type { Badge, Emote, ChatMessage, EventItem } from '~/types/chat'
 import { TwitchIcon, YoutubeIcon } from '~/assets/icons'
 
-const twitchChatRef = ref<HTMLElement>()
-const youtubeChatRef = ref<HTMLElement>()
-const tickerRef = ref<HTMLElement>()
+import ChatColumn from '~/components/ChatColumn.vue'
+
+const twitchColumnRef = ref<InstanceType<typeof ChatColumn>>()
+const youtubeColumnRef = ref<InstanceType<typeof ChatColumn>>()
 
 const twitchMessages = ref<ChatMessage[]>([])
 const youtubeMessages = ref<ChatMessage[]>([])
 const eventHistory = ref<EventItem[]>([])
-const isPaused = ref(false)
 const messagesOnTop = ref(false)
 const streamerbotHost = ref('127.0.0.1')
 const streamerbotPort = ref('8080')
 
 const connectionStatus = ref<'connecting' | 'connected' | 'disconnected'>('connecting')
-const tickerDuration = ref(30)
 const showSettingsModal = ref(false)
 
 let ws: WebSocket | null = null
@@ -180,7 +110,6 @@ interface twitchPunishedUser {
 
 const MAX_STORED_EVENTS = 10
 const EVENTS_STORAGE_KEY = 'eventsHistory'
-const TICKER_PX_PER_SEC = 100
 const STREAMERBOT_HOST_STORAGE_KEY = 'streamerbot.host'
 const STREAMERBOT_PORT_STORAGE_KEY = 'streamerbot.port'
 
@@ -226,18 +155,6 @@ function addEventPill(source: string, type: string, name: string, value?: string
     eventHistory.value.shift()
   }
   saveEventHistory(item)
-  updateTickerDuration()
-}
-
-function updateTickerDuration() {
-  if (!tickerRef.value) return
-  nextTick(() => {
-    if (!tickerRef.value) return
-    const w = tickerRef.value.scrollWidth
-    if (w === 0) return
-    const dur = Math.max(5, w / TICKER_PX_PER_SEC)
-    tickerDuration.value = dur
-  })
 }
 
 function autoScroll(container: HTMLElement | undefined) {
@@ -278,13 +195,13 @@ async function renderMessage(
     if (twitchMessages.value.length > 100) {
       twitchMessages.value.pop()
     }
-    nextTick(() => autoScroll(twitchChatRef.value))
+    nextTick(() => autoScroll(twitchColumnRef.value?.scrollRef))
   } else {
     youtubeMessages.value.unshift(message)
     if (youtubeMessages.value.length > 100) {
       youtubeMessages.value.pop()
     }
-    nextTick(() => autoScroll(youtubeChatRef.value))
+    nextTick(() => autoScroll(youtubeColumnRef.value?.scrollRef))
   }
 }
 
@@ -563,7 +480,6 @@ onMounted(async () => {
   }
 
   loadEventHistory()
-  updateTickerDuration()
 
   try {
     await loadStreamerbotConfig()
