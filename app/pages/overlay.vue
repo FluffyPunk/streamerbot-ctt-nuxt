@@ -18,7 +18,6 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import OverlayMessage from '~/components/OverlayMessage.vue'
 import type { Badge, Emote, ChatMessage } from '~/types/chat'
 import { colorFromName, normalizeBadges, getYouTubeBadgeText } from '~/utils/chatHelpers'
-import type { StreamerbotEventData } from '@streamerbot/client'
 
 const chatRef = ref<HTMLElement>()
 const messages = ref<ChatMessage[]>([])
