@@ -18,6 +18,7 @@ export interface ChatMessage {
   badges: Badge[]
   emotes: Emote[]
   time: string
+  timestamp?: number
   mention?: boolean
   reply?: { userName: string, msgBody: string }
 }

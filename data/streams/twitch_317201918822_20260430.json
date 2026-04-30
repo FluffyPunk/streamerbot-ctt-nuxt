@@ -1,0 +1,72 @@
+{
+  "streamId": "twitch_317201918822_20260430",
+  "startedAt": "2026-04-30T20:24:26.436Z",
+  "twitchMessages": [
+    {
+      "messageId": "e9d75d68-c401-467d-bc2c-2fe8fcad6e18",
+      "displayName": "FluffyDuckyBot",
+      "color": "#5aa9ff",
+      "text": "So testing youtube",
+      "badges": [
+        {
+          "name": "broadcaster",
+          "version": "1",
+          "imageUrl": "https://static-cdn.jtvnw.net/badges/v1/5527c58c-fb7d-422d-b71b-f309dcb85cc1/3",
+          "info": ""
+        }
+      ],
+      "emotes": [],
+      "time": "11:31 PM",
+      "timestamp": 1777581100102,
+      "mention": false
+    }
+  ],
+  "youtubeMessages": [
+    {
+      "messageId": "LCC.EhwKGkNMM2FrZEMxbHBRREZURU4xZ0FkNnI4UWln",
+      "displayName": "twfluffypunk",
+      "color": "hsl(143, 70%, 65%)",
+      "text": "So testing youtube",
+      "badges": [
+        {
+          "name": "👑"
+        }
+      ],
+      "emotes": [],
+      "time": "11:31 PM",
+      "timestamp": 1777581101326,
+      "mention": false
+    },
+    {
+      "messageId": "LCC.EhwKGkNONk0xZnkwbHBRREZiamRQd1FkamFRaHV3",
+      "displayName": "twfluffypunk",
+      "color": "hsl(143, 70%, 65%)",
+      "text": "I feel that AYAYA stores",
+      "badges": [
+        {
+          "name": "👑"
+        }
+      ],
+      "emotes": [
+        {
+          "type": "7TVGlobal",
+          "name": "AYAYA",
+          "startIndex": 12,
+          "endIndex": 16,
+          "imageUrl": "https://cdn.7tv.app/emote/01GB32XE6R00018VJGJ4A9BNCV/4x.png"
+        }
+      ],
+      "time": "11:28 PM",
+      "timestamp": 1777580926441,
+      "mention": false
+    }
+  ],
+  "events": [
+    {
+      "source": "Twitch",
+      "type": "GiftSub",
+      "name": "FluffyPunk",
+      "value": "6 months of Tier 1 to KofiStreamBot"
+    }
+  ]
+}

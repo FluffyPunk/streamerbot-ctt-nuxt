@@ -18,6 +18,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import OverlayMessage from '~/components/OverlayMessage.vue'
 import type { Badge, Emote, ChatMessage } from '~/types/chat'
 import { colorFromName, normalizeBadges, getYouTubeBadgeText } from '~/utils/chatHelpers'
+import type { StreamerbotEventData } from '@streamerbot/client'
 
 const chatRef = ref<HTMLElement>()
 const messages = ref<ChatMessage[]>([])
@@ -79,7 +80,7 @@ function handleChatMessage(source: string, data: any) {
       ? badgeEmojis.split(' ').map((emoji: string) => ({ name: emoji, imageUrl: undefined }))
       : []
 
-    messageId = data.messageId || data.id
+    messageId = data.eventId || data.id
   } else {
     emotes = data.emotes
     displayName = data.user?.name || 'Unknown'
@@ -99,7 +100,8 @@ function handleChatMessage(source: string, data: any) {
   renderMessage(displayName, color, messageText, normalizeBadges(badges), !!mention, messageId, reply, emotes)
 }
 
-function handleRelayedEvent(event: { source: string, type: string }, data: Record<string, unknown>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function handleRelayedEvent(event: { source: string, type: string }, data: any) {
   if (!event) return
 
   const source = event.source
@@ -112,7 +114,8 @@ function handleRelayedEvent(event: { source: string, type: string }, data: Recor
   }
 
   if (key === 'Twitch.UserBanned' || key === 'Twitch.UserTimedOut') {
-    const username = (data as { target_user_login?: string }).target_user_login
+    const username = data.targetUser.login
+    console.log(`[streamerbot] ${key} event for user:`, data)
     if (username) purgeOnBan(username)
   }
   if (key === 'YouTube.UserBanned') {
@@ -120,7 +123,7 @@ function handleRelayedEvent(event: { source: string, type: string }, data: Recor
     if (bannedUser?.name) purgeOnBan(bannedUser.name)
   }
   if (key === 'Twitch.ChatMessageDeleted') {
-    const targetMessageId = (data as { targetMessageId?: string }).targetMessageId
+    const targetMessageId = data.messageId
     if (targetMessageId) removeMessage(targetMessageId)
   }
 }
@@ -160,6 +163,18 @@ function initializeRelay() {
     try {
       parsed = JSON.parse(msg.data)
     } catch {
+      return
+    }
+
+    if (parsed.type === 'chat-history') {
+      if (messages.value.length === 0) {
+        const combined: ChatMessage[] = [
+          ...(parsed.twitchMessages || []),
+          ...(parsed.youtubeMessages || [])
+        ]
+        combined.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+        messages.value = combined
+      }
       return
     }
 

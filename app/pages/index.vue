@@ -109,8 +109,7 @@ interface twitchPunishedUser {
   type: string
 }
 
-const MAX_STORED_EVENTS = 10
-const EVENTS_STORAGE_KEY = 'eventsHistory'
+const MAX_STORED_EVENTS = 100
 const STREAMERBOT_HOST_STORAGE_KEY = 'streamerbot.host'
 const STREAMERBOT_PORT_STORAGE_KEY = 'streamerbot.port'
 
@@ -121,32 +120,12 @@ function getTime(): string {
   })
 }
 
-function loadEventHistory() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(EVENTS_STORAGE_KEY) || '[]')
-    eventHistory.value = stored.slice(0, MAX_STORED_EVENTS).reverse()
-  } catch {
-    eventHistory.value = []
-  }
-}
-
-function saveEventHistory(item: EventItem) {
-  try {
-    const stored = JSON.parse(localStorage.getItem(EVENTS_STORAGE_KEY) || '[]')
-    const next = [item, ...stored].slice(0, MAX_STORED_EVENTS)
-    localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(next))
-  } catch {
-    console.error('Failed to save event history')
-  }
-}
-
 function addEventPill(source: string, type: string, name: string, value?: string, message?: string) {
   const item = { source, type, name, value, message }
   eventHistory.value.push(item)
   if (eventHistory.value.length > MAX_STORED_EVENTS) {
     eventHistory.value.shift()
   }
-  saveEventHistory(item)
 }
 
 function autoScroll(container: HTMLElement | undefined) {
@@ -248,6 +227,19 @@ function initializeRelay() {
     try {
       parsed = JSON.parse(msg.data)
     } catch {
+      return
+    }
+
+    if (parsed.type === 'chat-history') {
+      if (twitchMessages.value.length === 0) {
+        twitchMessages.value = parsed.twitchMessages || []
+      }
+      if (youtubeMessages.value.length === 0) {
+        youtubeMessages.value = parsed.youtubeMessages || []
+      }
+      if (eventHistory.value.length === 0) {
+        eventHistory.value = (parsed.events || []).slice().reverse()
+      }
       return
     }
 
@@ -451,8 +443,6 @@ onMounted(async () => {
   if (savedMessagesOnTop !== null) {
     messagesOnTop.value = savedMessagesOnTop === 'true'
   }
-
-  loadEventHistory()
 
   try {
     await loadStreamerbotConfig()
