@@ -1,9 +1,9 @@
 <template>
-  <div class="h-8 bg-slate-900 border-b-2 border-slate-800 overflow-hidden shrink-0 flex items-center group">
+  <div class="events-ticker">
     <div
       v-if="events.length"
       ref="tickerRef"
-      class="flex items-center gap-6 whitespace-nowrap animate-ticker pl-full"
+      class="events-ticker-inner"
       :style="{
         animationDuration: tickerDuration + 's',
         animationPlayState: isPaused ? 'paused' : 'running'
@@ -21,10 +21,8 @@
         >
           <div
             :class="[
-              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 text-xs font-medium',
-              event.source === 'Twitch'
-                ? 'bg-slate-800 border-l-2 border-purple-500 text-slate-200'
-                : 'bg-slate-800 border-l-2 border-red-500 text-slate-200'
+              'event-pill',
+              event.source === 'Twitch' ? 'event-pill--twitch' : 'event-pill--youtube'
             ]"
           >
             <span class="font-semibold">{{ event.name }}</span>
@@ -38,10 +36,8 @@
         <div
           v-else
           :class="[
-            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 text-xs font-medium',
-            event.source === 'Twitch'
-              ? 'bg-slate-800 border-l-2 border-purple-500 text-slate-200'
-              : 'bg-slate-800 border-l-2 border-red-500 text-slate-200'
+            'event-pill',
+            event.source === 'Twitch' ? 'event-pill--twitch' : 'event-pill--youtube'
           ]"
         >
           <span class="font-semibold">{{ event.name }}</span>

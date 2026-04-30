@@ -1,77 +1,23 @@
 <template>
   <div
     ref="chatRef"
-    class="h-screen w-screen overflow-hidden flex flex-col-reverse"
+    class="overlay-root"
   >
-    <div class="flex flex-col-reverse gap-1 p-2">
-      <div
+    <div class="overlay-messages">
+      <OverlayMessage
         v-for="message in messages"
         :key="message.messageId"
-        class="overlay-message"
-      >
-        <!-- Reply -->
-        <div
-          v-if="message.reply"
-          class="text-xs text-white/50 border-l border-white/30 pl-2 mb-1 overflow-hidden whitespace-nowrap text-ellipsis"
-        >
-          Replying to <span class="font-semibold">{{ message.reply.userName }}</span>: {{ message.reply.msgBody }}
-        </div>
-
-        <!-- Name line with badges -->
-        <span class="inline">
-          <img
-            v-for="badge in (message.badges || []).filter((b: Badge) => b.imageUrl)"
-            :key="badge.name"
-            :src="badge.imageUrl"
-            :title="badge.name"
-            class="h-4 object-contain inline align-middle mr-0.5"
-            @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
-          >
-          <span
-            v-for="badge in (message.badges || []).filter((b: Badge) => !b.imageUrl && b.name)"
-            :key="badge.name"
-            class="inline align-middle mr-0.5"
-          >{{ badge.name }}</span>
-          <span
-            class="font-bold"
-            :style="{ color: message.color || '#5aa9ff' }"
-          >{{ message.displayName }}</span><span class="text-white/60">: </span>
-
-          <!-- Message content with emotes -->
-          <template
-            v-for="(part, idx) in parseMessageWithEmotes(message.text, message.emotes)"
-            :key="idx"
-          >
-            <span
-              v-if="part.type === 'text'"
-              class="inline"
-            >{{ part.content }}</span>
-            <img
-              v-else-if="part.type === 'emote'"
-              :src="part.emoteUrl"
-              :alt="part.emoteName"
-              :title="part.emoteName"
-              class="h-6 object-contain inline align-middle"
-              @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
-            >
-            <a
-              v-else-if="part.type === 'link'"
-              :href="part.linkUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-blue-400 underline break-all inline"
-            >{{ part.content }}</a>
-          </template>
-        </span>
-      </div>
+        :message="message"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import OverlayMessage from '~/components/OverlayMessage.vue'
 import type { Badge, Emote, ChatMessage } from '~/types/chat'
-import { parseMessageWithEmotes } from '~/utils/parseMessageParts'
+import { colorFromName, normalizeBadges, getYouTubeBadgeText } from '~/utils/chatHelpers'
 
 const chatRef = ref<HTMLElement>()
 const messages = ref<ChatMessage[]>([])
@@ -81,30 +27,6 @@ const connectionStatus = ref<'connecting' | 'connected' | 'disconnected'>('conne
 let ws: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 const broadcasterNicknames = { twitch: '', youtube: '' }
-
-function colorFromName(name: string): string {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  const h = Math.abs(hash) % 360
-  return `hsl(${h}, 70%, 65%)`
-}
-
-function normalizeBadges(badges: unknown): Badge[] {
-  if (Array.isArray(badges)) return badges
-  if (badges && typeof badges === 'object') return [badges as Badge]
-  return []
-}
-
-function getYouTubeBadgeText(user: { isOwner: boolean, isModerator: boolean, isSponsor: boolean, isVerified: boolean }): string {
-  let badgeText = ''
-  if (user?.isOwner) badgeText += '👑 '
-  if (user?.isModerator) badgeText += '🗡 '
-  if (user?.isSponsor) badgeText += '💚 '
-  if (user?.isVerified) badgeText += '✔ '
-  return badgeText.trim()
-}
 
 function renderMessage(
   displayName: string,
@@ -205,7 +127,9 @@ function handleRelayedEvent(event: { source: string, type: string }, data: Recor
 
 function initializeRelay() {
   if (ws) {
-    try { ws.close() } catch { /* ignore */ }
+    try {
+      ws.close()
+    } catch { /* ignore */ }
     ws = null
   }
   if (reconnectTimer) {
@@ -268,18 +192,9 @@ onMounted(() => {
 onUnmounted(() => {
   if (reconnectTimer) clearTimeout(reconnectTimer)
   if (ws) {
-    try { ws.close() } catch { /* ignore */ }
+    try {
+      ws.close()
+    } catch { /* ignore */ }
   }
 })
 </script>
-
-<style scoped>
-.overlay-message {
-  color: white;
-  font-size: 14px;
-  line-height: 1.4;
-  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 3px rgba(0, 0, 0, 0.8);
-  font-family: 'Public Sans', sans-serif;
-  word-wrap: break-word;
-}
-</style>

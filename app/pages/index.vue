@@ -1,7 +1,7 @@
 <template>
-  <div class="h-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden">
+  <div class="app-root">
     <!-- Header -->
-    <header class="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0 font-semibold text-sm">
+    <header class="app-header">
       <h1>Live Chat</h1>
       <UButton
         :class="['px-2.5 py-1 rounded-full text-xs cursor-pointer hover:opacity-80 transition-opacity', statusClass]"
@@ -25,7 +25,7 @@
     <EventsTicker :events="eventHistory" />
 
     <!-- Chat Columns -->
-    <div class="flex-1 flex gap-0 overflow-hidden">
+    <div class="app-columns">
       <ChatColumn
         ref="twitchColumnRef"
         :icon="TwitchIcon"
@@ -63,6 +63,7 @@ import TwitchMessage from '~/components/TwitchMessage.vue'
 import YouTubeMessage from '~/components/YouTubeMessage.vue'
 import type { Badge, Emote, ChatMessage, EventItem } from '~/types/chat'
 import { TwitchIcon, YoutubeIcon } from '~/assets/icons'
+import { colorFromName, normalizeBadges, getYouTubeBadgeText } from '~/utils/chatHelpers'
 
 import ChatColumn from '~/components/ChatColumn.vue'
 
@@ -112,15 +113,6 @@ const MAX_STORED_EVENTS = 10
 const EVENTS_STORAGE_KEY = 'eventsHistory'
 const STREAMERBOT_HOST_STORAGE_KEY = 'streamerbot.host'
 const STREAMERBOT_PORT_STORAGE_KEY = 'streamerbot.port'
-
-function colorFromName(name: string): string {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  const h = Math.abs(hash) % 360
-  return `hsl(${h}, 70%, 65%)`
-}
 
 function getTime(): string {
   return new Date().toLocaleTimeString([], {
@@ -203,25 +195,6 @@ async function renderMessage(
     }
     nextTick(() => autoScroll(youtubeColumnRef.value?.scrollRef))
   }
-}
-
-function normalizeBadges(badges: unknown): Badge[] {
-  if (Array.isArray(badges)) {
-    return badges
-  }
-  if (badges && typeof badges === 'object') {
-    return [badges as Badge]
-  }
-  return []
-}
-
-function getYouTubeBadgeText(user: { isOwner: boolean, isModerator: boolean, isSponsor: boolean, isVerified: boolean }): string {
-  let badgeText = ''
-  if (user?.isOwner) badgeText += '👑 '
-  if (user?.isModerator) badgeText += '🗡 '
-  if (user?.isSponsor) badgeText += '💚 '
-  if (user?.isVerified) badgeText += '✔ '
-  return badgeText.trim()
 }
 
 function purgeOnBan(username: string, isTwitch: boolean) {

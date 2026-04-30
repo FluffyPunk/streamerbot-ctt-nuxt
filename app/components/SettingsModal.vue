@@ -2,24 +2,24 @@
   <!-- Backdrop -->
   <div
     v-if="isOpen"
-    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+    class="settings-backdrop"
     @click="onClose"
   >
     <!-- Modal Dialog -->
     <div
-      class="bg-slate-900 rounded-lg border border-slate-700 shadow-2xl max-w-md w-full"
+      class="settings-dialog"
       @click.stop
     >
       <!-- Header -->
-      <div class="border-b border-slate-700 px-6 py-4">
-        <h2 class="text-lg font-semibold text-slate-100">
+      <div class="settings-dialog-header">
+        <h2 class="settings-dialog-title">
           Application Settings
         </h2>
       </div>
 
       <UForm
         :state="formData"
-        class="p-6 space-y-4"
+        class="settings-dialog-body"
         @submit="onSave"
       >
         <UTabs
@@ -75,7 +75,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="border-t border-slate-700 -mx-6 -mb-6 px-6 py-4 flex gap-3 justify-end">
+        <div class="settings-dialog-footer">
           <UButton
             type="button"
             color="neutral"
