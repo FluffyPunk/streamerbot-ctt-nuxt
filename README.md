@@ -4,15 +4,18 @@
 
 ## Main diffrerences from the original implementation:
 - Logic written in TypeScript
-- Built-in library instead of JS WebSocket client(which means easier development)
+- Built-in library instead of bare JS WebSocket client
 - UI using Vue + Tailwind(at some point Tailwind sucks, but let's ignore that elephant in the room for now)
 - Settings window for setting up the connection to Streamerbot
 - Dynamic streamer mentioning in chat messages(Twitch only, Youtube has no support for now)
 - Chat overlay as a separate page
-- Independent WebSocket(support for hosting it headless)
+- Independent WebSocket(support for hosting it on separate machine + it also was neccessary for overlay)
+- Message persistence
 
-## Future support capabilities:
-- i18n support (module is present for Nuxt)
+## Future support plans:
+- Stream announcements through Discord webhook
+- Reviewing messages by clicking user's nickname(similar to Twitch)
+- More visual settings
 
 ## Running the application
 
@@ -24,32 +27,32 @@ Download the release from the [releases page](https://github.com/FluffyPunk/stre
 node server/index.mjs
 ```
 
-Main chat is available at http://localhost:3000 and overlay is available at http://localhost:3000/overlay
+Main chat is available at http://HOST_IP:3000 and overlay is available at http://HOST_IP:3000/overlay
 
 ## Building/running from source
 
 Clone the repository and install dependencies:
 
 ```bash
-bun install
+npm i
 ```
 
 Then, run the development server:
 
 ```bash
-bun run dev
+npm run dev
 ```
 
 Build the application for production:
 
 ```bash
-bun run build
+npm run build
 ```
 
 Locally preview production build:
 
 ```bash
-bun run preview
+npm run preview
 ```
 
 ## Known issues
